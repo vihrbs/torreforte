@@ -428,6 +428,17 @@ select.btn{padding-right:28px}
 .cto{font-size:13px;background:var(--surface-2);border-radius:6px;padding:7px 9px;overflow-wrap:anywhere}
 .ct .chip{align-self:flex-start;cursor:pointer}
 .filters input[type=search]{flex:0 1 auto}
+.m2line{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.evol{display:flex;flex-direction:column;gap:5px}
+.evh{display:flex;justify-content:space-between;align-items:baseline}
+.evt{height:9px;border-radius:5px;background:var(--surface-3);overflow:hidden}
+.evt span{display:block;height:100%;background:var(--s-bens);border-radius:5px}
+.metas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.meta{border:1px solid var(--line);border-radius:7px;padding:12px 14px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px}
+.meta .mh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px}
+.meta .evt span{background:var(--accent)}
+.list tr.tot td{background:var(--surface-2)}
+@media (max-width:860px){.metas{grid-template-columns:1fr}}
 body{margin:0}</style></head><body>
 <div id="app"></div><div id="modal-root"></div>
 <script>
@@ -514,6 +525,9 @@ const FLOW = {
   bens: ['Vistorias e registro de ocorrências', 'Levantamento, análise e suporte técnico', 'Acionamento de garantia e mão de obra voluntária', 'Cotações de pós-obra e manutenção'],
   correcao: ['Aprovação das equipes', 'Execução da correção'],
 };
+const DOCI = [['foto', 'Falta foto'], ['video', 'Falta vídeo'], ['drone', 'Falta drone'], ['excel', 'Falta Excel'], ['preench', 'Falta preenchimentos e informações'], ['outros', 'Falta outros']];
+const docTxt = p => (p.itens || []).map(k => k === 'outros' && p.outro ? `Falta outros: ${p.outro}` : (DOCI.find(x => x[0] === k) || [, k])[1]).join(', ') || p.motivo || '';
+const M2_META_MES = 9000, M2_META_Q = 4500;
 const isMain = d => d.setor === 'laudo' && (d.tipo === 'asbuilt' || d.tipo === 'croqui');
 function flowOf(d) { if (d.setor === 'laudo') return isMain(d) ? FLOW.laudo : FLOW.sol; return FLOW[d.setor]; }
 const UFS = { AC: 'Acre', AL: 'Alagoas', AM: 'Amazonas', AP: 'Amapá', BA: 'Bahia', CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás', MA: 'Maranhão', MG: 'Minas Gerais', MS: 'Mato Grosso do Sul', MT: 'Mato Grosso', PA: 'Pará', PB: 'Paraíba', PE: 'Pernambuco', PI: 'Piauí', PR: 'Paraná', RJ: 'Rio de Janeiro', RN: 'Rio Grande do Norte', RO: 'Rondônia', RR: 'Roraima', RS: 'Rio Grande do Sul', SC: 'Santa Catarina', SE: 'Sergipe', SP: 'São Paulo', TO: 'Tocantins' };
@@ -715,6 +729,21 @@ function seed() {
   closeCycle(rm, 1, 352000, 'leticia', now - 45 * D, 'Entrega completa.'); rm.cycles.push({ n: 2, status: 'aberta' });
   d = dm(rm, { cycle: 2, createdAt: now - 4 * D, updatedAt: now - 4 * D }); walk(rm, d, 'leticia', 2, now - 4 * D, 5 * H); dm(rm, { setor: 'asbuilt', tipo: 'asbuilt', cycle: 2, createdAt: now - 3 * D, updatedAt: now - 3 * D, createdBy: 'leticia' });
   d.status = 'aguardando'; d.waitKind = 'asbuilt'; fe(rm, now - 3 * D, 'leticia', 'encaminhado', 'Encaminhado ao As Built (2ª vistoria). Aguardando desenho.');
+
+  // histórico de entregas dos últimos 45 dias (metas e painéis)
+  const lu = ['leticia', 'raquel'], au = ['larissa', 'kayque', 'david', 'david', 'kayque'];
+  for (let i = 0; i < 34; i++) {
+    const at = now - Math.floor(4 + rnd() * 42) * D;
+    rm = mk(40001 + i, pick(Object.keys(CITIES)), pick(BAIRROS), pick(['kaue', 'felipe', 'paulo']), { at });
+    d = dm(rm, {}); walk(rm, d, pick(lu), 5, at + D, 10 * H);
+    ab = dm(rm, { setor: 'asbuilt', tipo: 'asbuilt', createdAt: at + 2 * D }); const abu = pick(au); walk(rm, ab, abu, 1, at + 2 * D);
+    const fin = Math.min(now - H, at + (3 + rnd() * 6) * D);
+    ab.status = 'concluida'; ab.doneAt = fin; ab.updatedAt = fin; ab.m2c = Math.round(60 + rnd() * 240); ab.m2t = Math.round(ab.m2c * (1.2 + rnd() * 1.6));
+    fe(rm, fin, abu, 'asbuilt', `Desenho As Built concluído. Área construída ${ab.m2c} m² · terreno ${ab.m2t} m².`);
+    const lf = Math.min(now - H / 2, fin + rnd() * 2 * D); d.status = 'concluida'; d.doneAt = lf; d.updatedAt = lf;
+    closeCycle(rm, 1, Math.round(150 + rnd() * 500) * 1000, d.assignee, lf, 'Entrega completa.');
+  }
+  S.dem.filter(x => x.setor === 'asbuilt' && x.status === 'concluida' && x.m2c == null).forEach(x => { x.m2c = Math.round(60 + rnd() * 240); x.m2t = Math.round(x.m2c * (1.3 + rnd() * 1.4)); });
   // 19,20 — mais entradas
   rm = mk(11208, 'goiania', 'Setor Bueno', 'kaue', { at: now - 8 * H }); dm(rm, {});
   rm = mk(9055, 'teresina', 'Planalto', 'paulo', { at: now - 30 * H, desenho: 'croqui', legacy: 3, notas: 'Já teve 1ª e 2ª vistorias em 2023 e 2024.' }); dm(rm, { tipo: 'croqui' });
@@ -728,7 +757,7 @@ function seed() {
     const b = dm(rm, { setor: 'bens', tipo: 'bens', stage: Math.min(st, 3), assignee: bensU[Math.min(st, 3)], status: st === 4 ? 'concluida' : 'andamento' });
     let tt = at;
     for (let s = 0; s < st && s < 4; s++) { tt = Math.min(tt + Math.floor(rnd() * 4 + 1) * D, now - Math.floor(rnd() * 20 + 1) * H); fe(rm, tt, bensU[s], 'bens', `Etapa concluída: ${FLOW.bens[s]}.`); }
-    b.updatedAt = tt;
+    b.updatedAt = tt; const ev = st === 4 ? 100 : Math.round([5, 25, 50, 78][st] + rnd() * [15, 25, 28, 20][st]); b.evol = ev; b.evolHist = [{ at: Math.max(at, tt - 20 * D), pct: Math.max(0, ev - Math.round(rnd() * 25)), by: bensU[Math.min(st, 3)] }, { at: tt, pct: ev, by: bensU[Math.min(st, 3)] }];
   }
 
   // pool de imóveis disponíveis para visita (mapa)
@@ -743,13 +772,14 @@ function seed() {
   S.rms.forEach(rm => rm.cycles.forEach(c => { c.eng = c.eng || rm.eng; c.desenho = c.desenho || rm.desenho; c.dur = c.dur || Math.round((1 + rnd() * 3 + (rm.classif === 'Grave' ? 1 : 0)) * 2) / 2; c.dv = c.dv || (c.n === 1 ? rm.createdAt - D : (c.at ? c.at : rm.updatedAt) - D); }));
   // pendências com engenheiros (material)
   const PM = ['Faltam fotos da fachada', 'Folha de vistoria incompleta', 'Medidas do terreno ausentes', 'Fotos do quadro elétrico', 'Croqui de campo ilegível', 'Faltam fotos das áreas molhadas', 'Matrícula do imóvel não enviada'];
-  S.pend.push({ id: uid(), rmId: 'rm8615', eng: 'felipe', by: 'leticia', at: now - 30 * H, motivo: 'Faltam fotos da fachada e do quadro elétrico.', prazo: 24 });
-  S.pend.push({ id: uid(), rmId: 'rm10993', eng: 'paulo', by: 'raquel', at: now - 9 * H, motivo: 'Medição do terreno dos fundos.', prazo: 48 });
+  const pI = () => { const k = DOCI.map(x => x[0]).filter(x => x !== 'outros').filter(() => rnd() < .3); return k.length ? k : [pick(['foto', 'video', 'drone', 'excel', 'preench'])]; };
+  S.pend.push({ id: uid(), rmId: 'rm8615', eng: 'felipe', by: 'leticia', setor: 'laudo', at: now - 30 * H, itens: ['foto', 'drone'], prazo: 24 });
+  S.pend.push({ id: uid(), rmId: 'rm10993', eng: 'paulo', by: 'raquel', setor: 'laudo', at: now - 9 * H, itens: ['outros'], outro: 'medição do terreno dos fundos', prazo: 48 });
   S.dem.forEach(d => { if (d.rmId === 'rm8615' && isMain(d)) d.pendId = S.pend[0].id; if (d.rmId === 'rm10993' && isMain(d)) d.pendId = S.pend[1].id; });
   const lrms = S.rms.filter(r => r.origem !== 'bens' && !['rm8615', 'rm10993'].includes(r.id));
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < 40; i++) {
     const rm = lrms[i % lrms.length], at = Math.min(now - 2 * D, rm.createdAt + rnd() * 2 * D), hrs = (rm.eng === 'paulo' ? 20 : rm.eng === 'felipe' ? 10 : 5) + rnd() * (rm.eng === 'paulo' ? 70 : 30);
-    S.pend.push({ id: uid(), rmId: rm.id, eng: rm.eng, by: pick(['leticia', 'raquel']), at, motivo: pick(PM), prazo: 24, resolvedAt: at + hrs * H });
+    const by = pick(['leticia', 'raquel', 'leticia', 'kayque', 'david']), its = pI(); S.pend.push({ id: uid(), rmId: rm.id, eng: rm.eng, by, setor: U(by).setor, at, itens: its, outro: its.includes('outros') ? pick(PM) : '', prazo: 24, resolvedAt: at + hrs * H });
   }
 
   // vistorias agendadas para o restante do mês (agenda dos engenheiros)
@@ -849,6 +879,7 @@ function viewItems(v) {
     case 'team': return S.dem.filter(d => live(d) && d.status !== 'concluida' && (m.setor === 'adm' ? d.setor !== 'bens' : d.setor === m.setor) && (!UI.person || (UI.person === '_none' ? !d.assignee : d.assignee === UI.person)));
     case 'pend': return S.dem.filter(d => live(d) && inMySetor(d) && (d.status === 'aguardando' || (d.status === 'entrada' && d.stage === 6)));
     case 'all': return S.dem.filter(d => d.setor !== 'bens' || UI.showBens);
+    case 'setor': return S.dem.filter(d => live(d) && d.setor === v.s && d.status !== 'concluida');
     case 'canc': return S.dem.filter(d => rmOf(d).cancelado && d.status !== 'concluida');
     case 'box': return boxItems(v.box, v.key, v.cyc);
   }
@@ -860,6 +891,7 @@ function viewTitle(v) {
   if (v.name === 'pend') return 'Pendentes';
   if (v.name === 'all') return 'Todas';
   if (v.name === 'canc') return 'Canceladas';
+  if (v.name === 'setor') return `Disponível em ${SETOR[v.s].nome}`;
   if (v.name === 'box') { const b = BOXES.find(b => b.k === v.key); return `${v.box === 'in' ? 'Caixa de entrada' : 'Caixa de saída'} · ${b.l}${v.cyc ? ` · ${v.cyc}ª Vistoria${v.cyc === 4 ? '+' : ''}` : ''}`; }
   return '';
 }
@@ -919,7 +951,8 @@ function renderNav() {
     <h4><span>Equipe</span></h4>
     ${navBtn('Painel da equipe', { name: 'mural' }, null, 'msg')}
     ${m.lider ? navBtn('Dashboard da equipe', { name: 'analise' }, null, 'chart') : ''}
-    ${m.setor === 'adm' ? `<h4><span>ADM</span></h4>${navBtn('Painel de vistorias', { name: 'vist' }, null, 'cal')}${navBtn('Vistorias por RM', { name: 'vrm' }, null, 'list')}${navBtn('Contatos para agendamento', { name: 'contatos' }, S.rms.reduce((n, r) => n + (r.contatos || []).length, 0), 'user')}<h4><span>Engenheiros externos</span></h4>${navBtn('Resultados dos engenheiros', { name: 'engs' }, null, 'chart')}${navBtn('Registro de ocorrências', { name: 'ocorr' }, S.ocorr.length, 'flag')}` : ''}
+    ${m.lider ? `<h4><span>Outros setores</span></h4>${['asbuilt', 'laudo', 'evtl', 'bens'].filter(s => s !== m.setor).map(s => navBtn(SETOR[s].nome, { name: 'setor', s }, viewItems({ name: 'setor', s }).length, SETOR[s].ic)).join('')}` : ''}
+    ${m.setor === 'adm' ? `<h4><span>ADM</span></h4>${navBtn('Painel de vistorias', { name: 'vist' }, null, 'cal')}${navBtn('Vistorias por RM', { name: 'vrm' }, null, 'list')}${navBtn('Contatos para agendamento', { name: 'contatos' }, S.rms.reduce((n, r) => n + (r.contatos || []).length, 0), 'user')}<h4><span>Engenheiros externos</span></h4>${navBtn('Resultados dos engenheiros', { name: 'engs' }, null, 'chart')}${navBtn('Registro de ocorrências', { name: 'ocorr' }, S.ocorr.length + S.pend.length, 'flag')}` : ''}
     ${m.lider || m.setor === 'adm' ? navBtn('Extração para Excel', { name: 'extrair' }, null, 'table') : ''}
     <h4><span>Caixa de entrada</span></h4>${tree('in')}
     <h4><span>Caixa de saída</span></h4>${tree('out')}
@@ -978,7 +1011,7 @@ function actionsFor(d) {
     return A.join('');
   }
   if (d.setor === 'bens') {
-    if (mine || isLeader('bens')) b('bensnext', d.stage === 3 ? 'Concluir proposta' : `Concluir etapa ${d.stage + 1}`, 'pri');
+    if (mine || isLeader('bens')) { b('bensnext', d.stage === 3 ? 'Concluir proposta' : `Concluir etapa ${d.stage + 1}`, 'pri'); b('evolup', 'Atualizar evolução da obra'); }
     return A.join('');
   }
   if (d.status === 'entrada') {
@@ -990,7 +1023,7 @@ function actionsFor(d) {
   if (isMain(d)) {
     if (rm.legacyTarget > d.cycle) { b('legacy', `Regularizar até a ${rm.legacyTarget}ª vistoria`, 'pri'); return A.join(''); }
     const s = d.stage;
-    if (s === 1) { if (d.status === 'aguardando') b('matok', 'Material recebido', 'pri'); else { b('docsok', `${ic('check', 'sm')}Documentos conferidos`, 'pri'); b('waitmat', 'Aguardando material'); } }
+    if (s === 1) { if (d.status === 'aguardando') b('matok', 'Documentação recebida', 'pri'); else { b('docsok', `${ic('check', 'sm')}Documentos conferidos`, 'pri'); b('waitmat', 'Documentação incompleta'); } }
     if (s === 2) {
       const ab = abOpen(rm, d.cycle);
       if (d.status === 'aguardando') b('skipab', 'Seguir sem aguardar o As Built');
@@ -1006,7 +1039,7 @@ function actionsFor(d) {
     if (s === 6 && d.status === 'andamento') b('review', 'Concluir revisão e finalizar', 'pri');
   } else if (d.setor === 'laudo') {
     if (d.stage < 3) b('step', `Concluir ${FLOW.sol[d.stage].toLowerCase()}`, 'pri'); else b('send', 'Enviar para o cliente', 'pri');
-  } else if (d.setor === 'asbuilt') b('abdone', `${ic('check', 'sm')}Concluir desenho As Built`, 'pri');
+  } else if (d.setor === 'asbuilt') { if (d.status === 'aguardando' && d.waitKind === 'material') b('matok', 'Documentação recebida', 'pri'); else { b('abdone', `${ic('check', 'sm')}Concluir desenho As Built`, 'pri'); b('waitmat', 'Documentação incompleta'); } }
   else if (d.setor === 'evtl' && d.stage === 2) b('evtldone', 'Concluir EVTL', 'pri');
   b('release', 'Devolver à caixa', 'ghost');
   if (canAssign(d)) b('assign', 'Reatribuir', 'ghost');
@@ -1015,7 +1048,7 @@ function actionsFor(d) {
 function bannerFor(d) {
   const rm = rmOf(d);
   if (rm.cancelado) return '';
-  if (d.status === 'aguardando' && d.waitKind === 'material') return `<div class="banner ${overdue(d) ? 'bad' : 'warn'}">${ic('clock')}<div><b>${overdue(d) ? 'Material atrasado' : 'Aguardando material do engenheiro'}</b> · ${left(d.waitUntil)} (${fdt(d.waitUntil)})<br>${esc(d.waitReason || '')}</div></div>`;
+  if (d.status === 'aguardando' && d.waitKind === 'material') return `<div class="banner ${overdue(d) ? 'bad' : 'warn'}">${ic('clock')}<div><b>${overdue(d) ? 'Documentação atrasada' : 'Ocorrência aberta: documentação incompleta'}</b> · ${left(d.waitUntil)} (${fdt(d.waitUntil)})<br>${esc(d.waitReason || '')}</div></div>`;
   if (d.status === 'aguardando' && d.waitKind === 'asbuilt') { const ab = abOpen(rm, d.cycle); return `<div class="banner warn">${ic('pen')}<div><b>${d.stage === 6 ? 'Laudo já entregue ao cliente.' : 'Aguardando desenho As Built.'}</b> ${ab ? (ab.assignee ? `Com ${esc(U(ab.assignee).nome)}.` : 'Na caixa de entrada do As Built.') : ''} Quando o As Built concluir, volta para ${d.stage === 6 ? 'revisão de quem enviou' : 'esta esteira'}.</div></div>`; }
   if (d.status === 'aguardando' && d.waitKind === 'desenho') return `<div class="banner warn">${ic('pen')}<div><b>Aguardando desenho As Built</b> (marcado como prioridade). O EVTL volta para cá quando o desenho for concluído.</div></div>`;
   if (d.status === 'entrada' && d.stage === 6) return `<div class="banner info">${ic('redo')}<div><b>As Built concluído.</b> Quem enviou o laudo (${esc(U(d.sentBy).nome)}) não está mais ativo, então a revisão aguarda alguém de Laudos assumir.</div></div>`;
@@ -1028,6 +1061,11 @@ function bannerFor(d) {
 function stepper(d) {
   return `<ol class="steps">${dotsFor(d).map((x, i) => `<li class="${x.st}"><span class="sd">${x.st === 'done' ? '✓' : i + 1}</span><span class="sl">${esc(x.label)}</span></li>`).join('')}</ol>`;
 }
+function extraInfo(d) {
+  if (d.setor === 'asbuilt' && d.m2c != null) return `<div class="m2line"><span class="chip">Área construída <b class="mono">${d.m2c.toLocaleString('pt-BR')} m²</b></span><span class="chip">Área de terreno <b class="mono">${d.m2t.toLocaleString('pt-BR')} m²</b></span>${isLeader('asbuilt') ? `<button class="btn sm ghost" data-a="m2fix" data-id="${d.id}">${ic('edit', 'sm')}Corrigir m²</button>` : ''}</div>`;
+  if (d.setor === 'bens') { const p = d.evol || 0; return `<div class="evol"><div class="evh"><span class="eyebrow">Evolução da obra</span><b class="mono">${p}%</b></div><div class="evt"><span style="width:${p}%"></span></div>${(d.evolHist || []).length ? `<span class="note">Última atualização ${fd(d.evolHist[d.evolHist.length - 1].at)} por ${esc(U(d.evolHist[d.evolHist.length - 1].by).nome)}</span>` : ''}</div>`; }
+  return '';
+}
 function demCard(d, focus) {
   const done = d.status === 'concluida';
   const appr = d.setor === 'correcao' ? `<div class="approvals">${Object.entries(d.approvals).map(([s, v]) => `<span class="pill ${v ? 'ok' : 'warn'}">${v ? '✓' : '…'} ${SETOR[s].nome}</span>`).join('')}</div>` : '';
@@ -1035,7 +1073,7 @@ function demCard(d, focus) {
   return `<article class="dem ${done ? 'done' : ''} ${focus ? 'focus' : ''}" id="dem-${d.id}">
     <div class="dh">${setorTag(d.setor)}<span class="tp">${d.setor === 'laudo' ? esc(TIPO[d.tipo]) : d.setor === 'asbuilt' ? 'Desenho As Built' : d.setor === 'evtl' ? 'EVTL' + (d.mes ? ' · ' + d.mes : '') : d.setor === 'bens' ? 'Proposta de Bens e Imóveis' : esc(MOTIVOS['correcao_' + d.tipo])}</span>
       <span class="mono muted">#${d.num} · ${d.cycle}ª vistoria</span>${d.priority && !done ? '<span class="pill bad">Prioridade EVTL</span>' : ''}<span class="sp"></span>${pill(situacao(d))}${av(d.assignee, 'sm')}</div>
-    <div class="db">${stepper(d)}${bannerFor(d)}${appr}${acts ? `<div class="acts">${acts}</div>` : ''}
+    <div class="db">${stepper(d)}${bannerFor(d)}${appr}${extraInfo(d)}${acts ? `<div class="acts">${acts}</div>` : ''}
       <div class="note">Criada ${fdt(d.createdAt)} por ${esc(U(d.createdBy).nome)} · última alteração ${rel(d.updatedAt)}${d.assignee ? ' · responsável ' + esc(U(d.assignee).nome) : ''}</div></div></article>`;
 }
 const FK = { cadastro: 'Cadastro', assumiu: 'Assumiu', atribuido: 'Atribuição', etapa: 'Etapa', aguardando: 'Aguardando', material: 'Material', encaminhado: 'Encaminhado', entrega: 'Enviado ao cliente', fase: 'Vistoria finalizada', asbuilt: 'As Built', evtl: 'EVTL', bens: 'Bens e Imóveis', solicitacao: 'Solicitação', correcao: 'Correção', ok: 'OK da equipe', cancelado: 'Cancelado', reagendado: 'Reagendado', comentario: 'Comentário', edicao: 'Dados alterados', regularizacao: 'Histórico regularizado', devolvido: 'Devolvido' };
@@ -1448,12 +1486,23 @@ const A = {
   waitmat(ds) {
     const d = dem(ds.id), rm = rmOf(d);
     modal({
-      title: 'Aguardando material do engenheiro', intro: `O RM continua na sua esteira. Eng. ${esc(ENG(rm.eng).nome)} tem 24 h para enviar, ou o prazo que ele informar.`,
-      body: fTA('motivo', 'O que está faltando', true, 'ex.: fotos da fachada e do quadro elétrico') + fSel('prazo', 'Prazo', [['24', '24 horas (padrão)'], ['48', '48 horas'], ['72', '72 horas'], ['120', '5 dias']], '24'), ok: 'Registrar cobrança',
-      onOk(v) { if (!v.motivo.trim()) return 'Descreva o que está faltando.'; d.status = 'aguardando'; d.waitKind = 'material'; d.waitReason = v.motivo.trim(); d.waitUntil = Date.now() + (+v.prazo) * H; touch(d); const pd = { id: uid(), rmId: rm.id, eng: rm.eng, by: S.me, at: Date.now(), motivo: v.motivo.trim(), prazo: +v.prazo }; S.pend.push(pd); d.pendId = pd.id; addFeed(rm, 'aguardando', `Aguardando material do engenheiro (prazo ${v.prazo} h): ${v.motivo.trim()}`); }
+      title: 'Ocorrência: documentação incompleta', intro: `A requisição fica pendente na sua esteira até o Eng. ${esc(ENG(rm.eng).nome)} regularizar. Prazo padrão de 24 h ou o que ele informar.`,
+      body: `<div class="f c4"><label>O que está faltando <span class="req">*</span></label><div class="wpick">${DOCI.map(([k, l]) => `<label><input type="checkbox" name="itens" value="${k}"> ${l}</label>`).join('')}</div></div>` + fIn('outro', 'Falta outros: descreva', false, 'placeholder="ex.: matrícula do imóvel"', 'c4') + fSel('prazo', 'Prazo', [['24', '24 horas (padrão)'], ['48', '48 horas'], ['72', '72 horas'], ['120', '5 dias']], '24') + fTA('obs', 'Observação', false, 'ex.: engenheiro avisado por WhatsApp'),
+      ok: 'Abrir ocorrência',
+      onOk(v, f) {
+        const itens = [...f.querySelectorAll('input[name="itens"]:checked')].map(i => i.value);
+        if (!itens.length) return 'Marque o que está faltando.';
+        if (itens.includes('outros') && !v.outro.trim()) return 'Descreva o que falta em "Falta outros".';
+        const pd = { id: uid(), rmId: rm.id, demId: d.id, eng: rm.eng, by: S.me, setor: me().setor, at: Date.now(), itens, outro: v.outro.trim(), obs: v.obs.trim(), prazo: +v.prazo };
+        S.pend.push(pd); d.pendId = pd.id;
+        d.status = 'aguardando'; d.waitKind = 'material'; d.waitReason = docTxt(pd) + (pd.obs ? ` · ${pd.obs}` : ''); d.waitUntil = Date.now() + (+v.prazo) * H; touch(d);
+        addFeed(rm, 'aguardando', `Ocorrência de documentação incompleta aberta (prazo ${v.prazo} h): ${docTxt(pd)}.${pd.obs ? ' ' + pd.obs : ''}`, { tgt: 'adm' });
+        USERS.filter(u => u.setor === 'adm' && u.lider).forEach(u => notify(u.id, `Documentação incompleta no RM ${rm.rm} (Eng. ${ENG(rm.eng).nome}): ${docTxt(pd)}`, rm.id));
+        toast('Ocorrência aberta. A requisição aguarda a regularização.');
+      }
     });
   },
-  matok(ds) { const d = dem(ds.id); const pd = S.pend.find(p => p.id === d.pendId) || S.pend.filter(p => p.rmId === d.rmId && !p.resolvedAt).pop(); if (pd) pd.resolvedAt = Date.now(); d.pendId = null; d.status = 'andamento'; d.waitKind = null; d.waitUntil = null; touch(d); addFeed(rmOf(d), 'material', 'Material do engenheiro recebido.'); commit(); },
+  matok(ds) { const d = dem(ds.id); const pd = S.pend.find(p => p.id === d.pendId) || S.pend.filter(p => p.rmId === d.rmId && !p.resolvedAt).pop(); if (pd) pd.resolvedAt = Date.now(); d.pendId = null; d.status = 'andamento'; d.waitKind = null; d.waitUntil = null; touch(d); addFeed(rmOf(d), 'material', `Documentação regularizada pelo engenheiro${pd ? ` em ${dur(pd.resolvedAt - pd.at)}: ${docTxt(pd)}` : ''}.`); commit(); toast('Ocorrência encerrada.'); },
   croquiok(ds) { const d = dem(ds.id); d.stage = 3; touch(d); addFeed(rmOf(d), 'etapa', 'Croqui desenhado. Etapa: Avaliação imobiliária.'); commit(); },
   toab(ds) {
     const d = dem(ds.id), rm = rmOf(d);
@@ -1496,8 +1545,8 @@ const A = {
   abdone(ds) {
     const d = dem(ds.id), rm = rmOf(d);
     modal({
-      title: 'Concluir desenho As Built', body: fTA('desc', 'Descrição', false, 'ex.: planta baixa e cortes finalizados') + fFile(), ok: 'Concluir desenho',
-      onOk(v, f) { d.status = 'concluida'; d.doneAt = Date.now(); d.priority = false; touch(d); addFeed(rm, 'asbuilt', `Desenho As Built concluído. ${v.desc || ''}`.trim(), { tgt: 'laudo', anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `As Built do RM ${rm.rm} concluído.`, rm.id); notifyDone(d, 'desenho As Built'); asbuiltDone(d); toast('Desenho concluído. Demanda devolvida a Laudos/EVTL.'); }
+      title: 'Concluir desenho As Built', intro: 'As áreas desenhadas são obrigatórias para finalizar. Depois de finalizado, só a liderança do As Built pode corrigir.', body: fIn('m2c', 'Área construída (m²)', true, 'inputmode="decimal" placeholder="ex.: 142,5"') + fIn('m2t', 'Área de terreno desenhada (m²)', true, 'inputmode="decimal" placeholder="ex.: 360"') + fTA('desc', 'Descrição', false, 'ex.: planta baixa e cortes finalizados') + fFile(), ok: 'Concluir desenho',
+      onOk(v, f) { const m2c = parseBRL(v.m2c), m2t = parseBRL(v.m2t); if (!(m2c > 0)) return 'Informe a área construída em m².'; if (!(m2t > 0)) return 'Informe a área de terreno em m².'; d.m2c = m2c; d.m2t = m2t; d.status = 'concluida'; d.doneAt = Date.now(); d.priority = false; touch(d); addFeed(rm, 'asbuilt', `Desenho As Built concluído. Área construída ${m2c.toLocaleString('pt-BR')} m² · terreno ${m2t.toLocaleString('pt-BR')} m². ${v.desc || ''}`.trim(), { tgt: 'laudo', anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `As Built do RM ${rm.rm} concluído.`, rm.id); notifyDone(d, 'desenho As Built'); asbuiltDone(d); toast('Desenho concluído. Demanda devolvida a Laudos/EVTL.'); }
     });
   },
   evtldone(ds) {
@@ -1508,15 +1557,27 @@ const A = {
     const d = dem(ds.id), rm = rmOf(d), last = d.stage === 3, next = USERS.find(u => u.etapa === d.stage + 1);
     modal({
       title: `Etapa ${d.stage + 1} · ${FLOW.bens[d.stage]}`, intro: last ? 'Última etapa. A proposta será finalizada e o cliente avisado.' : `Próxima etapa: ${FLOW.bens[d.stage + 1]} (${next.nome}).`,
-      body: fTA('desc', 'Descrição', true) + fFile(), ok: last ? 'Finalizar proposta' : 'Concluir etapa',
+      body: fIn('evol', `Evolução da obra (%)${last ? ' · precisa ser 100%' : ''}`, true, `type="number" min="${d.evol || 0}" max="100" value="${last ? 100 : (d.evol || 0)}"`) + fTA('desc', 'Descrição', true) + fFile(), ok: last ? 'Finalizar proposta' : 'Concluir etapa',
       onOk(v, f) {
+        const ev = Math.round(+v.evol); if (isNaN(ev) || ev < (d.evol || 0) || ev > 100) return `A evolução precisa estar entre ${d.evol || 0}% e 100%.`; if (last && ev !== 100) return 'Para finalizar a proposta a obra precisa estar em 100%.';
         if (!v.desc.trim()) return 'A descrição é obrigatória.';
-        addFeed(rm, 'bens', `Etapa concluída: ${FLOW.bens[d.stage]}. ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notifyDone(d, `etapa ${d.stage + 1} de Bens e Imóveis`);
+        d.evol = ev; (d.evolHist = d.evolHist || []).push({ at: Date.now(), pct: ev, by: S.me });
+        addFeed(rm, 'bens', `Etapa concluída: ${FLOW.bens[d.stage]}. Obra em ${ev}%. ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notifyDone(d, `etapa ${d.stage + 1} de Bens e Imóveis`);
         if (last) { d.status = 'concluida'; d.doneAt = Date.now(); notify('cliente', `ADM Bens e Imóveis finalizado para o RM ${rm.rm}.`, rm.id); }
         else { d.stage++; d.assignee = next.id; d.assumedAt = Date.now(); notify(next.id, `RM ${rm.rm} chegou na sua etapa: ${FLOW.bens[d.stage]}.`, rm.id); }
         touch(d);
       }
     });
+  },
+  evolup(ds) {
+    const d = dem(ds.id), rm = rmOf(d);
+    modal({ title: 'Atualizar evolução da obra', intro: `Proposta do RM ${esc(rm.rm)} · etapa ${d.stage + 1}: ${FLOW.bens[d.stage]}. Hoje em ${d.evol || 0}%.`, body: fIn('evol', 'Evolução da obra (%)', true, `type="number" min="${d.evol || 0}" max="100" value="${d.evol || 0}"`) + fTA('obs', 'Observação', false, 'ex.: alvenaria concluída, iniciando cobertura'), ok: 'Salvar evolução',
+      onOk(v) { const ev = Math.round(+v.evol); if (isNaN(ev) || ev < (d.evol || 0) || ev > 100) return `A evolução precisa estar entre ${d.evol || 0}% e 100%.`; if (ev === (d.evol || 0)) return 'A evolução não mudou.'; const from = d.evol || 0; d.evol = ev; (d.evolHist = d.evolHist || []).push({ at: Date.now(), pct: ev, by: S.me }); touch(d); addFeed(rm, 'bens', `Evolução da obra: ${from}% → ${ev}%.${v.obs ? ' ' + v.obs.trim() : ''}`); toast('Evolução atualizada.'); } });
+  },
+  m2fix(ds) {
+    const d = dem(ds.id), rm = rmOf(d);
+    modal({ title: 'Corrigir áreas do As Built', intro: `RM ${esc(rm.rm)} · só a liderança do As Built pode corrigir. A correção fica no histórico.`, body: fIn('m2c', 'Área construída (m²)', true, `inputmode="decimal" value="${String(d.m2c).replace('.', ',')}"`) + fIn('m2t', 'Área de terreno (m²)', true, `inputmode="decimal" value="${String(d.m2t).replace('.', ',')}"`) + fTA('motivo', 'Motivo da correção', true), ok: 'Salvar correção',
+      onOk(v) { if (!isLeader('asbuilt')) return 'Só a liderança do As Built pode corrigir.'; const c = parseBRL(v.m2c), t = parseBRL(v.m2t); if (!(c > 0) || !(t > 0)) return 'Informe as duas áreas em m².'; if (!v.motivo.trim()) return 'Informe o motivo.'; addFeed(rm, 'edicao', `Áreas do As Built corrigidas: construída ${d.m2c} → ${c} m² · terreno ${d.m2t} → ${t} m². Motivo: ${v.motivo.trim()}`); d.m2c = c; d.m2t = t; toast('Áreas corrigidas.'); } });
   },
   approve(ds) {
     const d = dem(ds.id), rm = rmOf(d);
@@ -1776,7 +1837,49 @@ const TW = {
 };
 const DEF = { vist: ['v-resumo', 'v-real-dia', 'v-real-eng', 'v-prev-dia', 'v-prev-eng', 'v-tipo', 'v-desenho', 'v-tipodes'], vistadm: ['v-resumo', 'v-real-dia', 'v-real-eng', 'v-prev-dia', 'v-prev-eng'], analise: ['resumo', 'tabela', 'dia', 'etapa', 'gordura', 'recent'], gestao: ['resumo', 'equipes', 'pessoa', 'gordura', 'tempo', 'pendeng'], engs: ['e-cards', 'e-pend', 'e-reg', 'e-vist', 'e-tipos', 'e-tempo', 'e-ocorr'] };
 const prefKey = p => `${S.me}:${p}`;
-const prefsOf = (p, reg) => (S.prefs[prefKey(p)] || (p === 'vist' && me().setor === 'adm' ? DEF.vistadm : DEF[p])).filter(k => reg[k]);
+const prefsOf = (p, reg) => (S.prefs[prefKey(p)] || defFor(p)).filter(k => reg[k]);
+
+/* ---- quinzenas, metas de m², ocorrências de documentação, evolução de obra ---- */
+function quinz(t) { const d = new Date(t), y = d.getFullYear(), m = d.getMonth(); return d.getDate() <= 15 ? [new Date(y, m, 1).getTime(), new Date(y, m, 16).getTime()] : [new Date(y, m, 16).getTime(), new Date(y, m + 1, 1).getTime()]; }
+function mesW(t) { const d = new Date(t); return [new Date(d.getFullYear(), d.getMonth(), 1).getTime(), new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime()]; }
+const qLab = ([a, b]) => `${pad(new Date(a).getDate())}–${pad(new Date(b - 1).getDate())}/${pad(new Date(a).getMonth() + 1)}`;
+function windows() { const now = Date.now(), q = quinz(now), qp = quinz(q[0] - 1), m = mesW(now), mp = mesW(m[0] - 1); return [['Até hoje', [0, now + 1]], [`Quinzena atual (${qLab(q)})`, q], [`Quinzena anterior (${qLab(qp)})`, qp], [`Mês atual (${MESES[new Date(m[0]).getMonth()]})`, m], [`Mês anterior (${MESES[new Date(mp[0]).getMonth()]})`, mp]]; }
+const entregas = (T, [a, b]) => S.dem.filter(d => d.setor === T && d.status === 'concluida' && doneAt(d) >= a && doneAt(d) < b).length;
+const abDone = ([a, b], u) => S.dem.filter(d => d.setor === 'asbuilt' && d.status === 'concluida' && d.m2c != null && doneAt(d) >= a && doneAt(d) < b && (!u || d.assignee === u));
+const m2sum = (l, k = 'm2c') => l.reduce((s, d) => s + (d[k] || 0), 0);
+const m2f = n => `${Math.round(n).toLocaleString('pt-BR')} m²`;
+function meta(l, v, goal) { const p = Math.min(100, v / goal * 100); return `<div class="meta"><div class="mh"><span>${l}</span><b class="mono">${m2f(v)} <span class="muted">/ ${m2f(goal)}</span></b></div><div class="evt"><span style="width:${p}%;${p >= 100 ? 'background:var(--ok)' : ''}"></span></div><span class="note">${Math.round(v / goal * 100)}% da meta</span></div>`; }
+const waitOf = p => (p.resolvedAt || Date.now()) - p.at;
+const avgWait = l => l.length ? l.reduce((s, p) => s + waitOf(p), 0) / l.length : null;
+function docTable(rowsDef, P) {
+  return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:860px"><thead><tr><th></th>${DOCI.map(([, l]) => `<th>${l.replace('Falta ', '')}</th>`).join('')}<th>Abertas</th><th>Tempo médio de espera</th><th>Total</th></tr></thead><tbody>${rowsDef.map(([lab, f]) => { const l = P.filter(f); return `<tr><td>${lab}</td>${DOCI.map(([k]) => `<td class="mono">${l.filter(p => (p.itens || []).includes(k)).length || ''}</td>`).join('')}<td class="mono">${l.filter(p => !p.resolvedAt).length || ''}</td><td class="mono">${dur(avgWait(l))}</td><td class="mono"><b>${l.length}</b></td></tr>`; }).join('')}<tr class="tot"><td><b>Total</b></td>${DOCI.map(([k]) => `<td class="mono"><b>${P.filter(p => (p.itens || []).includes(k)).length}</b></td>`).join('')}<td class="mono"><b>${P.filter(p => !p.resolvedAt).length}</b></td><td class="mono"><b>${dur(avgWait(P))}</b></td><td class="mono"><b>${P.length}</b></td></tr></tbody></table></div>`;
+}
+const pendIn = () => S.pend.filter(p => p.at >= perStart());
+const pSetor = p => p.setor || U(p.by).setor;
+Object.assign(TW, {
+  'q-entregas': { t: 'Entregas por equipe · até hoje, quinzenal e mensal', l: true, r() {
+    const W = windows();
+    return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:760px"><thead><tr><th>Equipe</th>${W.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${TEAMS.map(T => `<tr><td>${setorTag(T)}</td>${W.map(([, w]) => `<td class="mono">${entregas(T, w)}</td>`).join('')}</tr>`).join('')}<tr><td><span class="setor s-asbuilt">m² construída (As Built)</span></td>${W.map(([, w]) => `<td class="mono">${m2f(m2sum(abDone(w)))}</td>`).join('')}</tr></tbody></table></div><p class="note" style="margin:8px 0 0">Bens e Imóveis: propostas finalizadas. Quinzenas: dias 1–15 e 16 ao fim do mês.</p>`; } },
+  m2: { t: 'As Built · m² de área construída entregue', l: true, r() {
+    const now = Date.now(), q = quinz(now), m = mesW(now), W = windows();
+    const people = USERS.filter(u => u.setor === 'asbuilt' && !u.inativo);
+    return `<div class="metas">${meta(`Quinzena atual (${qLab(q)})`, m2sum(abDone(q)), M2_META_Q)}${meta(`Mês de ${MESES[new Date(m[0]).getMonth()]}`, m2sum(abDone(m)), M2_META_MES)}<div class="meta"><div class="mh"><span>Total até hoje</span><b class="mono">${m2f(m2sum(abDone([0, now + 1])))}</b></div><span class="note">terreno desenhado: ${m2f(m2sum(abDone([0, now + 1]), 'm2t'))}</span></div></div>
+    <div class="tablewrap" style="border:0;margin-top:12px"><table class="list" style="min-width:720px"><thead><tr><th>Pessoa</th><th>Quinzena atual</th><th>Mês atual</th><th>Até hoje</th><th>Terreno no mês</th><th>Requisições no mês</th></tr></thead><tbody>${people.map(u => `<tr><td><span style="display:flex;gap:8px;align-items:center">${av(u.id, 'sm')}${esc(u.nome)}</span></td><td class="mono">${m2f(m2sum(abDone(q, u.id)))}</td><td class="mono">${m2f(m2sum(abDone(m, u.id)))}</td><td class="mono">${m2f(m2sum(abDone([0, now + 1], u.id)))}</td><td class="mono">${m2f(m2sum(abDone(m, u.id), 'm2t'))}</td><td class="mono">${abDone(m, u.id).length}</td></tr>`).join('')}</tbody></table></div><p class="note" style="margin:8px 0 0">Meta: ${m2f(M2_META_MES)} por mês, acompanhada por quinzena (${m2f(M2_META_Q)}).</p>`; } },
+  'oc-equipe': { t: 'Ocorrências de documentação por equipe', l: true, r() { const P = pendIn(); return docTable(['laudo', 'asbuilt', 'evtl', 'bens'].filter(T => P.some(p => pSetor(p) === T)).map(T => [setorTag(T), p => pSetor(p) === T]), P) + `<p class="note" style="margin:8px 0 0">Equipe que abriu a ocorrência · ${perLabel()}. Tempo de espera: da abertura até a regularização (abertas contam até agora).</p>`; } },
+  'oc-eng': { t: 'Ocorrências de documentação por engenheiro', l: true, r() { const P = pendIn(); return docTable(ENGS.map(e => [`<span class="dot-l" style="color:${e.cor};display:inline-block;margin-right:6px"></span>${esc(e.nome)}`, p => p.eng === e.id]), P); } },
+  evol: { t: 'Bens e Imóveis · evolução de obra', l: true, r() {
+    const L = S.dem.filter(d => d.setor === 'bens' && !rmOf(d).cancelado), s0 = perStart();
+    const avgE = L.length ? L.reduce((s, d) => s + (d.evol || 0), 0) / L.length : 0;
+    const gained = u => L.reduce((s, d) => { const h = (d.evolHist || []).filter(x => !u || x.by === u); let g = 0; h.forEach((x, i) => { if (x.at >= s0) { const prev = d.evolHist[d.evolHist.indexOf(x) - 1]; g += x.pct - (prev ? prev.pct : 0); } }); return s + Math.max(0, g); }, 0);
+    const F = [['0–25%', 0, 25], ['26–50%', 26, 50], ['51–75%', 51, 75], ['76–99%', 76, 99], ['100%', 100, 100]];
+    return `<div class="kpis k6" style="margin:0 0 12px;grid-template-columns:repeat(4,minmax(0,1fr))">${tile('Evolução média das obras', Math.round(avgE) + '%')}${tile('Obras em 100%', L.filter(d => (d.evol || 0) >= 100).length)}${tile('Propostas', L.length)}${tile('Pontos de evolução (' + perLabel() + ')', Math.round(gained()) + ' p.p.')}</div>
+    <div class="dgrid" style="gap:16px"><div><div class="eyebrow" style="margin-bottom:6px">Obras por faixa de evolução</div>${hbars(F.map(([l, a, b]) => ({ l, v: L.filter(d => (d.evol || 0) >= a && (d.evol || 0) <= b).length, c: 'var(--s-bens)' })))}</div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Evolução registrada por pessoa (p.p.)</div>${hbars(USERS.filter(u => u.setor === 'bens').map(u => ({ l: `${u.nome} · etapa ${u.etapa + 1}`, v: Math.round(gained(u.id)), c: 'var(--s-bens)' })))}</div></div>`; } },
+});
+DEF.vist = ['v-resumo', 'q-entregas', 'm2', 'v-real-dia', 'v-real-eng', 'v-prev-dia', 'v-prev-eng', 'v-tipo', 'v-desenho', 'v-tipodes', 'oc-equipe', 'oc-eng'];
+DEF.gestao = ['resumo', 'q-entregas', 'm2', 'equipes', 'pessoa', 'gordura', 'tempo', 'oc-equipe', 'oc-eng', 'evol'];
+DEF.analise = ['resumo', 'tabela', 'dia', 'etapa', 'gordura', 'oc-equipe', 'oc-eng', 'recent'];
+const defFor = p => p === 'analise' ? [...DEF.analise.slice(0, 1), ...(me().setor === 'asbuilt' ? ['m2'] : me().setor === 'bens' ? ['evol'] : []), ...DEF.analise.slice(1)] : p === 'vist' && me().setor === 'adm' ? DEF.vistadm : DEF[p];
 
 /* ---- widgets dos engenheiros ---- */
 function engData(e) {
@@ -1792,8 +1895,8 @@ const OCT = ['Atraso na entrega de material', 'Material incompleto', 'Erro na fo
 const EW = {
   'e-cards': { t: 'Resumo por engenheiro', l: true, r() {
     return `<div class="ecards">${engList().map(engData).map(x => `<div class="ecard"><div class="eh"><span class="dot-l" style="color:${x.e.cor}"></span><b>${esc(x.e.nome)}</b></div><dl><dt>Vistorias realizadas</dt><dd>${x.cyc.length}</dd><dt>Pendências</dt><dd>${x.P.length}${x.open.length ? ` <span class="pill warn">${x.open.length} aberta(s)</span>` : ''}</dd><dt>Tempo médio de regularização</dt><dd>${dur(x.reg)}</dd><dt>Tempo médio por vistoria</dt><dd>${hrsTxt(x.tdur)}</dd><dt>Ocorrências</dt><dd>${x.oc.length}</dd></dl></div>`).join('')}</div>`; } },
-  'e-pend': { t: 'Pendências por engenheiro', r() { const all = engList().map(engData), tot = all.reduce((n, x) => n + x.P.length, 0) || 1; return hbars(all.map(x => ({ l: x.e.nome, v: x.P.length, c: x.e.cor, dot: x.e.cor })), v => `${v} · ${Math.round(v / tot * 100)}%`); } },
-  'e-reg': { t: 'Tempo de regularização das pendências', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.reg == null ? 0 : x.reg / H, c: x.e.cor, dot: x.e.cor })), v => v ? dur(v * H) : '—') + '<p class="note" style="margin:8px 0 0">Média entre a cobrança e o recebimento do material.</p>'; } },
+  'e-pend': { t: 'Ocorrências de documentação por engenheiro', r() { const all = engList().map(engData), tot = all.reduce((n, x) => n + x.P.length, 0) || 1; return hbars(all.map(x => ({ l: x.e.nome, v: x.P.length, c: x.e.cor, dot: x.e.cor })), v => `${v} · ${Math.round(v / tot * 100)}%`); } },
+  'e-reg': { t: 'Tempo de espera até regularizar', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.reg == null ? 0 : x.reg / H, c: x.e.cor, dot: x.e.cor })), v => v ? dur(v * H) : '—') + '<p class="note" style="margin:8px 0 0">Média entre a cobrança e o recebimento do material.</p>'; } },
   'e-vist': { t: 'Vistorias realizadas', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.cyc.length, c: x.e.cor, dot: x.e.cor }))); } },
   'e-tipos': { t: 'Tipos de vistoria realizados', l: true, r() {
     const cols = [['1ª vistoria', ([c]) => c.n === 1], ['2ª vistoria', ([c]) => c.n === 2], ['3ª ou mais', ([c]) => c.n >= 3], ['As Built', ([c]) => c.desenho !== 'croqui'], ['Croqui', ([c]) => c.desenho === 'croqui'], ['Classif. Grave', ([, rm]) => rm.classif === 'Grave']];
@@ -1802,9 +1905,9 @@ const EW = {
   'e-tempo': { t: 'Tempo médio gasto em cada vistoria', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.tdur || 0, c: x.e.cor, dot: x.e.cor })), v => v ? hrsTxt(v) : '—') + '<p class="note" style="margin:8px 0 0">Informado no cadastro do RM (tempo gasto na vistoria).</p>'; } },
   'e-ocorr': { t: 'Ocorrências registradas pelo ADM', l: true, r() {
     return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:640px"><thead><tr><th>Engenheiro</th>${OCT.map(t => `<th>${t}</th>`).join('')}<th>Total</th></tr></thead><tbody>${engList().map(engData).map(x => `<tr data-a="go" data-v='{"name":"ocorr"}'><td>${esc(x.e.nome)}</td>${OCT.map(t => `<td class="mono">${x.oc.filter(o => o.tipo === t).length || ''}</td>`).join('')}<td class="mono"><b>${x.oc.length}</b></td></tr>`).join('')}</tbody></table></div>`; } },
-  'e-lista': { t: 'Pendências recentes', l: true, r() {
+  'e-lista': { t: 'Ocorrências de documentação recentes', l: true, r() {
     const l = S.pend.filter(p => (!UI.eng || p.eng === UI.eng) && p.at >= perStart()).sort((a, b) => b.at - a.at).slice(0, 15);
-    return `<div class="att">${l.map(p => { const rm = S.rms.find(r => r.id === p.rmId); return `<button data-a="open" data-rm="${p.rmId}">${pill(p.resolvedAt ? ['ok', 'Regularizada em ' + dur(p.resolvedAt - p.at)] : (Date.now() - p.at > p.prazo * H ? ['bad', 'Atrasada'] : ['warn', 'Aberta']))}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(ENG(p.eng).nome)} · RM ${esc(rm ? rm.rm : '')}</span><span class="note">${esc(p.motivo)} · ${fdt(p.at)}</span></span>${av(p.by, 'sm')}</button>`; }).join('') || '<div class="empty">Nenhuma pendência.</div>'}</div>`; } },
+    return `<div class="att">${l.map(p => { const rm = S.rms.find(r => r.id === p.rmId); return `<button data-a="open" data-rm="${p.rmId}">${pill(p.resolvedAt ? ['ok', 'Regularizada em ' + dur(p.resolvedAt - p.at)] : (Date.now() - p.at > p.prazo * H ? ['bad', 'Atrasada'] : ['warn', 'Aberta']))}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(ENG(p.eng).nome)} · RM ${esc(rm ? rm.rm : '')}</span><span class="note">${esc(docTxt(p))} · ${fdt(p.at)}</span></span>${av(p.by, 'sm')}</button>`; }).join('') || '<div class="empty">Nenhuma pendência.</div>'}</div>`; } },
 };
 
 function dashShell(page, reg, title, eyebrow, extra, body) {
@@ -1834,7 +1937,7 @@ function renderNavGestao() {
   return `<aside class="nav">
     ${navBtn('Painel de gestão', { name: 'gestao' }, null, 'chart')}
     ${navBtn('Engenheiros externos', { name: 'engs' }, null, 'user')}
-    ${navBtn('Ocorrências dos engenheiros', { name: 'ocorr' }, S.ocorr.length, 'flag')}
+    ${navBtn('Ocorrências dos engenheiros', { name: 'ocorr' }, S.ocorr.length + S.pend.length, 'flag')}
     ${navBtn('Extração para Excel', { name: 'extrair' }, null, 'table')}
     <h4><span>Consulta</span></h4>
     ${navBtn('Todas as requisições', { name: 'all' }, viewItems({ name: 'all' }).length, 'list')}
@@ -1847,7 +1950,7 @@ function renderNavGestao() {
 function renderOcorr() {
   const m = me(), can = m.setor === 'adm';
   if (!['adm', 'gestao'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM e Gestão.</div></div>`;
-  const f = UI.oc || {}, l = S.ocorr.filter(o => (!f.eng || o.eng === f.eng) && (!f.tipo || o.tipo === f.tipo)).sort((a, b) => b.at - a.at);
+  const f = UI.oc || {}, all = [...S.ocorr, ...S.pend.map(p => ({ id: p.id, ref: 'doc', eng: p.eng, tipo: 'Documentação incompleta', grav: p.resolvedAt ? 'Regularizada' : 'Aberta', desc: docTxt(p) + (p.obs ? ' · ' + p.obs : ''), rmId: p.rmId, at: p.at, by: p.by, wait: waitOf(p) }))], l = all.filter(o => (!f.eng || o.eng === f.eng) && (!f.tipo || o.tipo === f.tipo)).sort((a, b) => b.at - a.at);
   return `<div class="page"><div class="phead"><div><span class="eyebrow">Engenheiros externos</span><h1>Registro de ocorrências</h1><p class="sub" style="margin:4px 0 0">Ocorrências com o engenheiro ou com o RM (morador, endereço, documentação).</p></div></div>
   ${can ? `<form id="ocform" class="panel" style="margin-bottom:16px" autocomplete="off"><h3>${ic('flag')}Nova ocorrência</h3><div class="form">
     <div class="f c4"><label>Referente a</label><div class="radios"><label><input type="radio" name="oref" value="eng" checked> Engenheiro</label><label><input type="radio" name="oref" value="rm"> RM</label></div></div>
@@ -1858,9 +1961,9 @@ function renderOcorr() {
     <div class="f"><label for="o-rm" id="o-rmlab">RM (opcional)</label><input id="o-rm" name="rm" inputmode="numeric" list="ocrms" placeholder="ex.: 10919"><datalist id="ocrms">${S.rms.filter(r => r.origem !== 'bens').map(r => `<option value="${r.rm}">`).join('')}</datalist></div>
     <div class="f c4"><label for="o-desc">Descrição <span class="req">*</span></label><textarea id="o-desc" name="desc" placeholder="O que aconteceu"></textarea></div></div>
     <div class="acts" style="margin-top:12px;justify-content:flex-end"><button type="submit" class="btn pri">${ic('check', 'sm')}Registrar ocorrência</button></div></form>` : ''}
-  <div class="filters"><select id="oceng"><option value="">Todos os engenheiros</option>${ENGS.map(e => `<option value="${e.id}" ${f.eng === e.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select><select id="octipo"><option value="">Todos os tipos</option>${[...OCT, ...OCT_RM].map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="note">${l.length} ocorrência(s)</span></div>
-  <div class="tablewrap"><table class="list"><thead><tr><th>Data</th><th>Referente a</th><th>Engenheiro</th><th>Tipo</th><th>Gravidade</th><th>RM</th><th>Descrição</th><th>Registrada por</th></tr></thead><tbody>
-  ${l.map(o => { const rm = o.rmId && S.rms.find(r => r.id === o.rmId); return `<tr ${rm ? `data-a="open" data-rm="${rm.id}"` : ''}><td class="dt">${fd(o.at)}</td><td>${o.ref === 'rm' ? 'RM' : 'Engenheiro'}</td><td>${o.eng ? esc(ENG(o.eng).nome) : '—'}</td><td>${esc(o.tipo)}</td><td>${pill([o.grav === 'Grave' ? 'bad' : o.grav === 'Média' ? 'warn' : '', o.grav])}</td><td class="mono">${rm ? esc(rm.rm) : '—'}</td><td style="max-width:420px">${esc(o.desc)}</td><td>${av(o.by, 'sm')}</td></tr>`; }).join('') || '<tr><td colspan="8" class="empty">Nenhuma ocorrência.</td></tr>'}
+  <div class="filters"><select id="oceng"><option value="">Todos os engenheiros</option>${ENGS.map(e => `<option value="${e.id}" ${f.eng === e.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select><select id="octipo"><option value="">Todos os tipos</option>${['Documentação incompleta', ...OCT, ...OCT_RM].map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="note">${l.length} ocorrência(s)</span></div>
+  <div class="tablewrap"><table class="list"><thead><tr><th>Data</th><th>Referente a</th><th>Engenheiro</th><th>Tipo</th><th>Gravidade / situação</th><th>Tempo de espera</th><th>RM</th><th>Descrição</th><th>Registrada por</th></tr></thead><tbody>
+  ${l.map(o => { const rm = o.rmId && S.rms.find(r => r.id === o.rmId); return `<tr ${rm ? `data-a="open" data-rm="${rm.id}"` : ''}><td class="dt">${fd(o.at)}</td><td>${o.ref === 'rm' ? 'RM' : o.ref === 'doc' ? 'Requisição' : 'Engenheiro'}</td><td>${o.eng ? esc(ENG(o.eng).nome) : '—'}</td><td>${esc(o.tipo)}</td><td>${pill([o.grav === 'Grave' || o.grav === 'Aberta' ? 'bad' : o.grav === 'Média' ? 'warn' : o.grav === 'Regularizada' ? 'ok' : '', o.grav])}</td><td class="mono">${o.wait != null ? dur(o.wait) : '—'}</td><td class="mono">${rm ? esc(rm.rm) : '—'}</td><td style="max-width:420px">${esc(o.desc)}</td><td>${av(o.by, 'sm')}</td></tr>`; }).join('') || '<tr><td colspan="9" class="empty">Nenhuma ocorrência.</td></tr>'}
   </tbody></table></div></div>`;
 }
 function submitOcorr(form) {
@@ -1889,9 +1992,9 @@ const XCOLS = [
   ['dv', 'Data da vistoria', d => new Date(rmOf(d).dataVistoria)], ['dur', 'Tempo na vistoria (h)', d => (rmOf(d).cycles.find(c => c.n === d.cycle) || {}).dur || ''],
   ['valor', 'Valor do imóvel', d => { const c = rmOf(d).cycles.find(c => c.n === d.cycle) || {}; return c.valor || c.valorPrev || ''; }],
   ['resplaudo', 'Responsável pelo laudo', d => { const c = rmOf(d).cycles.find(c => c.n === d.cycle) || {}; return c.resp ? U(c.resp).nome : ''; }],
-  ['pend', 'Pendências com engenheiro', d => S.pend.filter(p => p.rmId === d.rmId).length], ['atraso', 'Material atrasado', d => overdue(d) ? 'Sim' : 'Não'],
+  ['pend', 'Ocorrências de documentação', d => S.pend.filter(p => p.rmId === d.rmId).length], ['m2c', 'Área construída (m²)', d => d.m2c ?? ''], ['m2t', 'Área de terreno (m²)', d => d.m2t ?? ''], ['evol', 'Evolução da obra (%)', d => d.setor === 'bens' ? (d.evol || 0) : ''], ['atraso', 'Material atrasado', d => overdue(d) ? 'Sim' : 'Não'],
 ];
-const XSHEETS = [['req', 'Requisições'], ['pessoa', 'Resumo por pessoa'], ['pend', 'Pendências com engenheiros'], ['eng', 'Resultados dos engenheiros'], ['ocorr', 'Ocorrências'], ['hist', 'Histórico de acontecimentos']];
+const XSHEETS = [['req', 'Requisições'], ['pessoa', 'Resumo por pessoa'], ['pend', 'Ocorrências de documentação'], ['eng', 'Resultados dos engenheiros'], ['ocorr', 'Ocorrências'], ['hist', 'Histórico de acontecimentos']];
 function renderExtrair() {
   const m = me(), all = ['gestao', 'adm'].includes(m.setor);
   if (!all && !m.lider) return `<div class="page"><div class="empty">Disponível para líderes, ADM e Gestão.</div></div>`;
@@ -1977,7 +2080,7 @@ async function genXlsx() {
     nReq = ds.length; add('Requisições', ds.map(d => Object.fromEntries(cols.map(([, l, fn]) => [l, fn(d)]))));
   }
   if (sheets.includes('pessoa')) add('Resumo por pessoa', teams.filter(t => t !== 'correcao').flatMap(T => metrics(T).people.map(p => ({ Equipe: tnm(T), Pessoa: p.u.nome, Líder: p.u.lider ? 'Sim' : '', Realizadas: p.real, Abertas: p.open, 'Em andamento': p.and, Aguardando: p.wait, Atrasadas: p.late, 'Tempo médio (h)': p.avg == null ? '' : Math.round(p.avg / H * 10) / 10 }))));
-  if (sheets.includes('pend')) add('Pendências engenheiros', S.pend.filter(p => p.at >= s0).sort((a, b) => b.at - a.at).map(p => { const rm = S.rms.find(r => r.id === p.rmId) || {}; return { Engenheiro: ENG(p.eng).nome, RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, Motivo: p.motivo, 'Cobrado por': U(p.by).nome, 'Cobrado em': new Date(p.at), 'Prazo (h)': p.prazo, 'Regularizado em': p.resolvedAt ? new Date(p.resolvedAt) : '', 'Tempo até regularizar (h)': p.resolvedAt ? Math.round((p.resolvedAt - p.at) / H * 10) / 10 : '', Situação: p.resolvedAt ? 'Regularizada' : (Date.now() - p.at > p.prazo * H ? 'Atrasada' : 'Aberta') }; }));
+  if (sheets.includes('pend')) add('Pendências engenheiros', S.pend.filter(p => p.at >= s0).sort((a, b) => b.at - a.at).map(p => { const rm = S.rms.find(r => r.id === p.rmId) || {}; return { Engenheiro: ENG(p.eng).nome, RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, 'O que falta': docTxt(p), Equipe: SETOR[pSetor(p)] ? SETOR[pSetor(p)].nome : '', Observação: p.obs || '', 'Cobrado por': U(p.by).nome, 'Cobrado em': new Date(p.at), 'Prazo (h)': p.prazo, 'Regularizado em': p.resolvedAt ? new Date(p.resolvedAt) : '', 'Tempo até regularizar (h)': p.resolvedAt ? Math.round((p.resolvedAt - p.at) / H * 10) / 10 : '', Situação: p.resolvedAt ? 'Regularizada' : (Date.now() - p.at > p.prazo * H ? 'Atrasada' : 'Aberta') }; }));
   if (sheets.includes('eng')) add('Engenheiros', ENGS.map(engData).map(x => ({ Engenheiro: x.e.nome, 'Vistorias realizadas': x.cyc.length, '1ª vistoria': x.cyc.filter(([c]) => c.n === 1).length, '2ª vistoria': x.cyc.filter(([c]) => c.n === 2).length, '3ª ou mais': x.cyc.filter(([c]) => c.n >= 3).length, 'As Built': x.cyc.filter(([c]) => c.desenho !== 'croqui').length, Croqui: x.cyc.filter(([c]) => c.desenho === 'croqui').length, Pendências: x.P.length, 'Pendências abertas': x.open.length, 'Tempo médio regularização (h)': x.reg == null ? '' : Math.round(x.reg / H * 10) / 10, 'Tempo médio por vistoria (h)': x.tdur == null ? '' : Math.round(x.tdur * 10) / 10, Ocorrências: x.oc.length })));
   if (sheets.includes('ocorr')) add('Ocorrências', S.ocorr.filter(o => o.at >= s0).sort((a, b) => b.at - a.at).map(o => ({ Data: new Date(o.at), Engenheiro: ENG(o.eng).nome, Tipo: o.tipo, Gravidade: o.grav, RM: o.rmId ? (S.rms.find(r => r.id === o.rmId) || {}).rm : '', Descrição: o.desc, 'Registrada por': U(o.by).nome })));
   if (sheets.includes('hist')) { const rows = []; S.rms.forEach(rm => rm.feed.forEach(e => { if (e.at >= s0 && teams.some(T => evFor(e, T))) rows.push({ 'Data e hora': new Date(e.at), RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, Pessoa: U(e.by).nome, Setor: SETOR[U(e.by).setor] ? SETOR[U(e.by).setor].nome : '', Tipo: FK[e.kind] || e.kind, Descrição: e.text, 'Valor do imóvel': e.valor || '' }); })); rows.sort((a, b) => b['Data e hora'] - a['Data e hora']); add('Histórico', rows); }
@@ -1993,8 +2096,8 @@ Object.assign(A, {
   present() { UI.present = !UI.present; UI.pick = false; UI.navOpen = false; render(); },
   gtab(ds) { UI.gt = ds.t; render(); },
   engf(ds) { UI.eng = ds.e; render(); },
-  wtog(ds) { const reg = ds.p === 'engs' ? EW : TW, cur = prefsOf(ds.p, reg); S.prefs[prefKey(ds.p)] = cur.includes(ds.k) ? cur.filter(k => k !== ds.k) : Object.keys(reg).filter(k => cur.includes(k) || k === ds.k); commit(); },
-  wall(ds) { S.prefs[prefKey(ds.p)] = Object.keys(ds.p === 'engs' ? EW : TW); commit(); },
+  wtog(ds) { const reg = ds.p === 'engs' ? EW : ds.p === 'vist' ? VW : TW, cur = prefsOf(ds.p, reg); S.prefs[prefKey(ds.p)] = cur.includes(ds.k) ? cur.filter(k => k !== ds.k) : Object.keys(reg).filter(k => cur.includes(k) || k === ds.k); commit(); },
+  wall(ds) { S.prefs[prefKey(ds.p)] = Object.keys(ds.p === 'engs' ? EW : ds.p === 'vist' ? VW : TW); commit(); },
   wdef(ds) { delete S.prefs[prefKey(ds.p)]; commit(); },
   xall(ds) { document.querySelectorAll('#xform input[name="col"]').forEach(i => { i.checked = ds.on === '1'; }); },
   xgen() { genXlsx(); },
@@ -2032,6 +2135,13 @@ const VW = {
     const cell = (n, d) => { const it = V.items.filter(x => (n === 4 ? x.n >= 4 : x.n === n) && x.des === d); return `<td class="mono"><b>${it.length}</b> <span class="muted">(${it.filter(x => x.done).length} realizadas)</span></td>`; };
     return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:520px"><thead><tr><th>Vistoria</th><th>As Built</th><th>Croqui</th><th>Total</th></tr></thead><tbody>${[1, 2, 3, 4].map(n => `<tr><td>${nLab(n)}</td>${cell(n, 'asbuilt')}${cell(n, 'croqui')}<td class="mono"><b>${V.items.filter(x => n === 4 ? x.n >= 4 : x.n === n).length}</b></td></tr>`).join('')}</tbody></table></div>`; } },
 };
+Object.assign(VW, {
+  'q-entregas': { t: TW['q-entregas'].t, l: true, r: () => TW['q-entregas'].r() },
+  m2: { t: TW.m2.t, l: true, r: () => TW.m2.r() },
+  'oc-equipe': { t: TW['oc-equipe'].t, l: true, r: () => TW['oc-equipe'].r() },
+  'oc-eng': { t: TW['oc-eng'].t, l: true, r: () => TW['oc-eng'].r() },
+  evol: { t: TW.evol.t, l: true, r: () => TW.evol.r() },
+});
 function workDays(V, untilToday) { const now = new Date(); let n = 0; for (let d = 1; d <= V.days; d++) { const dt = new Date(V.y, V.mo - 1, d); if (untilToday && dt > now) break; if (dt.getDay() % 6) n++; } return n; }
 function renderVist() {
   const m = me(); if (!['dados', 'adm'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM e Análise de dados.</div></div>`;
