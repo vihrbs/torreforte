@@ -372,6 +372,23 @@ table.list{width:100%;border-collapse:collapse;min-width:980px}
 .att .av{align-self:center;height:24px}
 @media (max-width:520px){.att button{grid-template-columns:1fr auto}.att button>.pill{grid-column:1/-1;justify-self:start}}
 [hidden]{display:none!important}
+.kpis.k6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.kpis.k6 .v{font-size:26px}
+.mural{display:flex;flex-direction:column}
+.mrow{display:grid;grid-template-columns:24px 1fr;gap:10px;padding:9px 6px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;width:100%}
+.mrow:hover{background:var(--surface-2)}
+.mrow .who{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13px}
+.mrow .when{color:var(--ink-3);font:12px var(--f-mono)}
+.mrow .mt{display:block;font-size:12.5px;color:var(--ink-2);margin-top:1px}
+.mrow .mx{display:block;font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cols{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:18px}
+.colb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+.colb .cb{width:100%;max-width:26px;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px}
+.colb .cv{font-size:11px;color:var(--ink-2)}
+.colb .cl{font-size:10.5px;color:var(--ink-3)}
+.bar.wide{grid-template-columns:170px 1fr 28px}
+@media (max-width:1180px){.kpis.k6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:860px){.kpis.k6{grid-template-columns:repeat(2,minmax(0,1fr))}.bar.wide{grid-template-columns:120px 1fr 24px}}
 body{margin:0}</style></head><body>
 <div id="app"></div><div id="modal-root"></div>
 <script>
@@ -531,6 +548,12 @@ function addFeed(rm, kind, text, extra) {
 }
 function touch(d) { d.updatedAt = Date.now(); d.updBy = S.me; }
 function notify(to, text, rmId) { S.notifs.push({ id: uid(), to, text, rmId, at: Date.now(), read: false }); }
+function notifyDone(d, what) {
+  const rm = rmOf(d), who = U(S.me).nome;
+  USERS.filter(u => u.lider && u.setor === d.setor && u.id !== S.me).forEach(u => notify(u.id, `${who} finalizou: ${what} · RM ${rm.rm}`, rm.id));
+}
+const doneAt = d => d.doneAt || d.updatedAt;
+const assumedAt = d => d.assumedAt || d.createdAt;
 function notifySetorLeader(setor, text, rmId) { USERS.filter(u => u.setor === setor && u.lider).forEach(u => u.id !== S.me && notify(u.id, text, rmId)); }
 function newDem(rm, o) {
   const t = Date.now();
@@ -548,13 +571,13 @@ function createRM(o) {
   const vist = Math.max(1, +o.vistoria || 1);
   const rm = { id: 'rm' + uid(), rm: String(o.rm).replace(/\D/g, ''), bairro: o.bairro, cidade: o.cidade, uf: o.uf, lat, lng, eng: o.eng, classif: o.classif || 'Regular', regiao: o.regiao || '', desenho: o.desenho || 'asbuilt', dataVistoria: o.dataVistoria || t, confirmado: o.confirmado !== false, notas: o.notas || '', anexos: o.anexos || [], createdBy: S.me, createdAt: t, updatedAt: t, cancelado: false, legacyTarget: vist > 1 ? vist : 0, cycles: [{ n: 1, status: 'aberta' }], feed: [] };
   S.rms.push(rm);
-  addFeed(rm, 'cadastro', `RM cadastrado como ${vist}ª vistoria${vist > 1 ? ' (histórico anterior ao sistema: a esteira inicia na 1ª vistoria e quem assumir regulariza as vistorias anteriores)' : ''}.${rm.notas ? '\nAtenção: ' + rm.notas : ''}`, { anexos: rm.anexos });
+  addFeed(rm, 'cadastro', `RM cadastrado como ${vist}ª vistoria${vist > 1 ? ' (histórico anterior ao sistema: a esteira inicia na 1ª vistoria e quem assumir regulariza as vistorias anteriores)' : ''}.${rm.notas ? '\nAtenção: ' + rm.notas : ''}`, { anexos: rm.anexos, tgt: 'laudo' });
   if (!o.semLaudo) {
     const d = newDem(rm, { tipo: rm.desenho, cycle: 1 });
-    if (o.assignee) { d.assignee = o.assignee; d.stage = 1; d.status = 'andamento'; addFeed(rm, 'atribuido', `Atribuído com urgência a ${U(o.assignee).nome}.`, { to: o.assignee }); notify(o.assignee, `Urgente: ${rmTitle(rm, 1)} foi atribuído a você.`, rm.id); }
+    if (o.assignee) { d.assignee = o.assignee; d.assumedAt = Date.now(); d.stage = 1; d.status = 'andamento'; addFeed(rm, 'atribuido', `Atribuído com urgência a ${U(o.assignee).nome}.`, { to: o.assignee }); notify(o.assignee, `Urgente: ${rmTitle(rm, 1)} foi atribuído a você.`, rm.id); }
     else notifySetorLeader('laudo', `Novo RM na caixa de entrada: ${rmTitle(rm, 1)}`, rm.id);
   }
-  if (o.bens) { const b = newDem(rm, { setor: 'bens', tipo: 'bens', stage: 0, assignee: 'isabelly', status: 'andamento' }); addFeed(rm, 'encaminhado', 'Incluído na esteira de ADM Bens e Imóveis (Etapa 1 · Isabelly).'); }
+  if (o.bens) { const b = newDem(rm, { setor: 'bens', tipo: 'bens', stage: 0, assignee: 'isabelly', status: 'andamento' }); addFeed(rm, 'encaminhado', 'Incluído na esteira de ADM Bens e Imóveis (Etapa 1 · Isabelly).', { tgt: 'bens' }); }
   return rm;
 }
 
@@ -731,11 +754,12 @@ function dots(d) {
 const BOXES = [
   { k: 'laudo-asbuilt', l: 'Laudo As Built', f: d => d.setor === 'laudo' && d.tipo === 'asbuilt' && d.stage !== 6, cyc: true },
   { k: 'laudo-croqui', l: 'Laudo Croqui', f: d => d.setor === 'laudo' && d.tipo === 'croqui' && d.stage !== 6, cyc: true },
-  { k: 'laudo-reavaliacao', l: 'Laudo Reavaliação', f: d => d.tipo === 'reavaliacao' },
-  { k: 'laudo-patologias', l: 'Laudo Acomp. de Patologias', f: d => d.tipo === 'patologias' },
-  { k: 'laudo-anuncios', l: 'Laudo Anúncios', f: d => d.tipo === 'anuncios' },
-  { k: 'laudo-comite', l: 'Laudo Comitê', f: d => d.tipo === 'comite' },
-  { k: 'laudo-remota', l: 'Laudo Vistoria remota', f: d => d.tipo === 'remota' },
+  { k: 'outros', l: 'Outros tipos de laudo', f: d => d.setor === 'laudo' && !isMain(d), group: true },
+  { k: 'laudo-reavaliacao', l: 'Laudo Reavaliação', f: d => d.tipo === 'reavaliacao', parent: 'outros' },
+  { k: 'laudo-patologias', l: 'Laudo Acomp. de Patologias', f: d => d.tipo === 'patologias', parent: 'outros' },
+  { k: 'laudo-anuncios', l: 'Laudo Anúncios', f: d => d.tipo === 'anuncios', parent: 'outros' },
+  { k: 'laudo-comite', l: 'Laudo Comitê', f: d => d.tipo === 'comite', parent: 'outros' },
+  { k: 'laudo-remota', l: 'Laudo Vistoria remota', f: d => d.tipo === 'remota', parent: 'outros' },
   { k: 'revisao-asbuilt', l: 'Revisão do As Built', f: d => isMain(d) && d.stage === 6 },
   { k: 'asbuilt', l: 'As Built', f: d => d.setor === 'asbuilt', cyc: true },
   { k: 'evtl', l: 'EVTL', f: d => d.setor === 'evtl', open: true },
@@ -756,6 +780,7 @@ function viewItems(v) {
   const m = me();
   switch (v.name) {
     case 'mine': return S.dem.filter(d => live(d) && d.assignee === m.id && d.status !== 'concluida');
+    case 'team': return S.dem.filter(d => live(d) && d.assignee && d.assignee !== m.id && d.status !== 'concluida' && (m.setor === 'adm' ? d.setor !== 'bens' : U(d.assignee).setor === m.setor) && (!UI.person || d.assignee === UI.person));
     case 'pend': return S.dem.filter(d => live(d) && inMySetor(d) && (d.status === 'aguardando' || (d.status === 'entrada' && d.stage === 6)));
     case 'all': return S.dem.filter(d => d.setor !== 'bens' || UI.showBens);
     case 'canc': return S.dem.filter(d => rmOf(d).cancelado && d.status !== 'concluida');
@@ -764,7 +789,8 @@ function viewItems(v) {
   return [];
 }
 function viewTitle(v) {
-  if (v.name === 'mine') return 'Minha esteira';
+  if (v.name === 'mine') return 'Atribuídas a mim';
+  if (v.name === 'team') return 'Atribuídas à equipe';
   if (v.name === 'pend') return 'Pendentes';
   if (v.name === 'all') return 'Todas';
   if (v.name === 'canc') return 'Canceladas';
@@ -772,7 +798,7 @@ function viewTitle(v) {
   return '';
 }
 // Cada setor vê só as próprias caixas. ADM (cadastro/distribuição) vê todas. Correções: só líderes.
-const BOX_SETOR = k => k.startsWith('laudo') || k === 'revisao-asbuilt' ? 'laudo' : k.startsWith('correcao') ? 'correcao' : k;
+const BOX_SETOR = k => k.startsWith('laudo') || k === 'outros' || k === 'revisao-asbuilt' ? 'laudo' : k.startsWith('correcao') ? 'correcao' : k;
 function boxAllowed(b) {
   const m = me();
   if (b.leader) return !!m.lider;
@@ -805,10 +831,11 @@ function navBtn(label, view, n, icon, extra = '', hot) {
   return `<button class="ni ${on ? 'on' : ''}" data-a="go" data-v='${esc(JSON.stringify(view))}'>${icon ? ic(icon) : ''}<span class="lab">${label}</span>${n != null ? `<span class="n ${hot ? 'hot' : ''}">${n}</span>` : ''}${extra}</button>`;
 }
 function tree(box) {
-  return `<div class="tree">${visibleBoxes().map(b => {
-    const n = boxItems(box, b.k).length, ok = `${box}:${b.k}`, open = UI.open[ok];
-    const kids = b.cyc ? [1, 2, 3, 4].map(c => navBtn(`${c}ª Vistoria${c === 4 ? '+' : ''}`, { name: 'box', box, key: b.k, cyc: c }, boxItems(box, b.k, c).length)).join('') : '';
-    return `<div class="tnode"><button class="tog ${b.cyc ? '' : 'none'} ${open ? 'open' : ''}" data-a="tog" data-k="${ok}" aria-label="Expandir">${ic('chev')}</button>${navBtn(esc(b.l), { name: 'box', box, key: b.k }, n, null, '', box === 'in' && n > 0)}</div>${b.cyc && open ? `<div class="tkids">${kids}</div>` : ''}`;
+  return `<div class="tree">${visibleBoxes().filter(b => !b.parent).map(b => {
+    const n = boxItems(box, b.k).length, ok = `${box}:${b.k}`, open = UI.open[ok], exp = b.cyc || b.group;
+    const kids = b.cyc ? [1, 2, 3, 4].map(c => navBtn(`${c}ª Vistoria${c === 4 ? '+' : ''}`, { name: 'box', box, key: b.k, cyc: c }, boxItems(box, b.k, c).length)).join('')
+      : b.group ? visibleBoxes().filter(x => x.parent === b.k).map(x => navBtn(esc(x.l), { name: 'box', box, key: x.k }, boxItems(box, x.k).length)).join('') : '';
+    return `<div class="tnode"><button class="tog ${exp ? '' : 'none'} ${open ? 'open' : ''}" data-a="tog" data-k="${ok}" aria-label="Expandir">${ic('chev')}</button>${navBtn(esc(b.l), { name: 'box', box, key: b.k }, n, null, '', box === 'in' && n > 0)}</div>${exp && open ? `<div class="tkids">${kids}</div>` : ''}`;
   }).join('')}</div>`;
 }
 function renderNav() {
@@ -817,9 +844,13 @@ function renderNav() {
   return `<aside class="nav">
     ${m.setor === 'adm' ? `<button class="cta" data-a="go" data-v='{"name":"cad"}'>${ic('plus')}Cadastrar RM</button>` : `<button class="cta" data-a="sol">${ic('plus')}Nova solicitação</button>`}
     ${navBtn('Painel', { name: 'dash' }, null, 'home')}
-    ${navBtn('Minha esteira', { name: 'mine' }, viewItems({ name: 'mine' }).length, 'user')}
+    ${navBtn('Atribuídas a mim', { name: 'mine' }, viewItems({ name: 'mine' }).length, 'user')}
+    ${navBtn('Atribuídas à equipe', { name: 'team' }, (() => { const p = UI.person; UI.person = ''; const n = viewItems({ name: 'team' }).length; UI.person = p; return n; })(), 'list')}
     ${navBtn('Pendentes', { name: 'pend' }, viewItems({ name: 'pend' }).length, 'alert', '', late > 0)}
     ${navBtn('Todas', { name: 'all' }, viewItems({ name: 'all' }).length, 'list')}
+    <h4><span>Equipe</span></h4>
+    ${navBtn('Painel da equipe', { name: 'mural' }, null, 'msg')}
+    ${m.lider || m.setor === 'adm' ? navBtn('Análise da equipe', { name: 'analise' }, null, 'chart') : ''}
     <h4><span>Caixa de entrada</span></h4>${tree('in')}
     <h4><span>Caixa de saída</span></h4>${tree('out')}
     <h4><span>Planejamento</span></h4>
@@ -851,6 +882,7 @@ function renderList() {
   const lim = 60 + UI.more;
   const body = !items.length ? `<div class="card empty">Nada aqui no momento.</div>` : UI.mode === 'kanban' ? renderKanban(items) : `<div class="tablewrap"><table class="list"><thead><tr><th>#</th><th>Título</th><th>Fluxo</th><th>Situação</th><th>Vistoria em</th><th>Última alteração</th><th>Criada por</th><th>Responsável</th></tr></thead><tbody>${items.slice(0, lim).map(rowHTML).join('')}</tbody></table></div>${items.length > lim ? `<p style="text-align:center"><button class="btn" data-a="more">Mostrar mais (${items.length - lim})</button></p>` : ''}`;
   return `<div class="page"><div class="phead"><h1>${esc(viewTitle(v))}</h1><span class="sub mono">${items.length}</span><span class="sp"></span>
+    ${v.name === 'team' ? `<div class="ufchips">${[['', 'Todos'], ...teamMembers().filter(u => u.id !== S.me).map(u => [u.id, u.nome])].map(([id, n]) => `<button class="${UI.person === id ? 'on' : ''}" data-a="person" data-p="${id}">${esc(n)}</button>`).join('')}</div>` : ''}
     ${v.name === 'all' ? `<label class="chip"><input type="checkbox" id="showBens" ${UI.showBens ? 'checked' : ''}> incluir Bens e Imóveis</label>` : ''}
     <div class="seg"><button class="${UI.mode === 'table' ? 'on' : ''}" data-a="mode" data-m="table">${ic('table', 'sm')}Lista</button><button class="${UI.mode === 'kanban' ? 'on' : ''}" data-a="mode" data-m="kanban">${ic('board', 'sm')}Quadro</button></div></div>${body}</div>`;
 }
@@ -980,7 +1012,7 @@ function renderDash() {
   const L = S.dem.filter(live), m = me();
   const k = [
     ['RMs ativos', S.rms.filter(r => !r.cancelado && demsOf(r).some(d => d.status !== 'concluida' && d.setor !== 'bens')).length, '', { name: 'all' }],
-    ['Na caixa de entrada', visibleBoxes().reduce((n, b) => n + boxItems('in', b.k).length, 0), '', { name: 'box', box: 'in', key: (visibleBoxes()[0] || { k: 'laudo-asbuilt' }).k }],
+    ['Na caixa de entrada', visibleBoxes().filter(b => !b.parent).reduce((n, b) => n + boxItems('in', b.k).length, 0), '', { name: 'box', box: 'in', key: (visibleBoxes()[0] || { k: 'laudo-asbuilt' }).k }],
     ['Material atrasado', L.filter(overdue).length, 'bad', { name: 'pend' }],
     ['As Built pendente', L.filter(d => d.setor === 'asbuilt' && d.status !== 'concluida').length, 'warn', { name: 'box', box: 'in', key: 'asbuilt' }],
     ['Concluídas em 30 dias', L.filter(d => d.status === 'concluida' && d.updatedAt > Date.now() - 30 * D && d.setor !== 'bens').length, '', { name: 'box', box: 'out', key: 'laudo-asbuilt' }],
@@ -999,7 +1031,7 @@ function renderDash() {
   const bens = FLOW.bens.map((s, i) => [s, L.filter(d => d.setor === 'bens' && d.status !== 'concluida' && d.stage === i).length, USERS.find(u => u.etapa === i)]);
   const bmx = Math.max(1, ...bens.map(b => b[1]));
   return `<div class="page"><div class="phead"><div><span class="eyebrow">${esc(SETOR[m.setor].nome)}</span><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1></div><span class="sp"></span>
-    <button class="btn" data-a="go" data-v='{"name":"mine"}'>${ic('user', 'sm')}Minha esteira · ${viewItems({ name: 'mine' }).length}</button></div>
+    <button class="btn" data-a="go" data-v='{"name":"mine"}'>${ic('user', 'sm')}Atribuídas a mim · ${viewItems({ name: 'mine' }).length}</button></div>
   <div class="kpis">${k.map(([l, v, c, view]) => `<button class="kpi ${v ? c : ''}" data-a="go" data-v='${esc(JSON.stringify(view))}'><div class="l">${l}</div><div class="v">${v}</div></button>`).join('')}</div>
   <div class="dgrid"><section class="panel"><h3>${ic('alert')}Precisa de atenção</h3><div class="att">${att.length ? att.slice(0, 12).map(([d, k, t, s]) => `<button data-a="open" data-rm="${d.rmId}" data-d="${d.id}"><span class="pill ${k}">${t}</span><span style="min-width:0"><span style="display:block;font-weight:500">${esc(demTitle(d))}</span><span class="note">${esc(s)}</span></span>${av(d.assignee, 'sm')}</button>`).join('') : '<div class="empty">Tudo em dia.</div>'}</div></section>
   <div class="col"><section class="panel"><h3>${ic('user')}Carga por pessoa</h3><div class="legend"><span><i style="background:var(--accent)"></i>Em andamento</span><span><i style="background:var(--warn)"></i>Aguardando</span></div>
@@ -1188,10 +1220,62 @@ function renderClientRM() {
   <div class="col"><section class="panel"><h3>Entregas e avisos</h3><div class="feed">${rm.feed.filter(e => CLIENT_KINDS.includes(e.kind)).sort((a, b) => b.at - a.at).map(feedEntry).join('')}</div></section></div></div></div>`;
 }
 
+/* ================== equipe: painel e análise ================== */
+const DONE_KINDS = ['fase', 'entrega', 'asbuilt', 'evtl', 'bens', 'correcao'];
+const MCAT = [['', 'Tudo'], ['atrib', 'Atribuições'], ['transf', 'Transferências'], ['material', 'Material'], ['concl', 'Conclusões'], ['outros', 'Outros']];
+const MCAT_K = { atrib: ['assumiu', 'atribuido', 'devolvido'], transf: ['encaminhado'], material: ['aguardando', 'material'], concl: ['etapa', 'entrega', 'fase', 'asbuilt', 'evtl', 'bens', 'correcao', 'regularizacao', 'ok'], outros: ['cadastro', 'solicitacao', 'cancelado', 'reagendado', 'comentario', 'edicao'] };
+function teamSel() { const m = me(); return UI.team || (['adm', 'cliente'].includes(m.setor) ? 'laudo' : m.setor); }
+function teamMembers() { const m = me(); return USERS.filter(u => !u.inativo && (m.setor === 'adm' ? ['laudo', 'asbuilt', 'evtl'].includes(u.setor) : u.setor === m.setor)); }
+const teamPicker = () => me().setor === 'adm' ? `<select id="teamsel" class="btn">${['laudo', 'asbuilt', 'evtl', 'bens'].map(s => `<option value="${s}" ${teamSel() === s ? 'selected' : ''}>${SETOR[s].nome}</option>`).join('')}</select>` : '';
+const evFor = (e, T) => U(e.by).setor === T || (e.to && U(e.to).setor === T) || e.tgt === T;
+function teamEvents(T, since) { const out = []; S.rms.forEach(rm => rm.feed.forEach(e => { if (e.at >= since && evFor(e, T)) out.push([e, rm]); })); return out.sort((a, b) => b[0].at - a[0].at); }
+function renderMural() {
+  const T = teamSel(), now = Date.now(), L = S.dem.filter(d => live(d) && d.setor === T);
+  const ev = teamEvents(T, now - 30 * D), ev7 = ev.filter(([e]) => e.at > now - 7 * D);
+  const k = [['Na caixa de entrada', L.filter(d => d.status === 'entrada').length, ''], ['Atribuídas', L.filter(d => d.assignee && d.status !== 'concluida').length, ''], ['Aguardando', L.filter(d => d.status === 'aguardando').length, 'warn'], ['Material atrasado', L.filter(overdue).length, 'bad'], ['Transferências em 7 dias', ev7.filter(([e]) => e.kind === 'encaminhado').length, ''], ['Concluídas em 7 dias', ev7.filter(([e]) => DONE_KINDS.includes(e.kind)).length, '']];
+  const list = ev.filter(([e]) => !UI.mf || MCAT_K[UI.mf].includes(e.kind)).slice(0, 150);
+  let lastDay = '';
+  const rows = list.map(([e, rm]) => { const day = fd(e.at), h = day !== lastDay ? `<div class="eyebrow" style="padding:14px 0 4px">${day === fd(now) ? 'Hoje' : day === fd(now - D) ? 'Ontem' : day}</div>` : ''; lastDay = day;
+    return h + `<button class="mrow" data-a="open" data-rm="${rm.id}">${av(e.by, 'sm')}<span style="min-width:0"><span class="who"><b>${esc(U(e.by).nome)}</b> <span class="fk k-${e.kind}">${FK[e.kind] || e.kind}</span> <span class="when">${ft(e.at)}</span></span><span class="mt">RM ${esc(rm.rm)} · ${esc(rm.bairro)} · ${esc(rm.cidade)}/${rm.uf}</span><span class="mx">${esc(e.text)}</span></span></button>`; }).join('');
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">Equipe</span><h1>Painel da equipe · ${SETOR[T].nome}</h1></div><span class="sp"></span>${teamPicker()}</div>
+  <div class="kpis k6">${k.map(([l, v, c]) => `<div class="kpi ${v ? c : ''}" style="cursor:default"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('')}</div>
+  <section class="panel"><h3>${ic('msg')}Acontecimentos dos últimos 30 dias</h3><div class="ufchips" style="margin-bottom:6px">${MCAT.map(([f, l]) => `<button class="${(UI.mf || '') === f ? 'on' : ''}" data-a="mfilt" data-f="${f}">${l}</button>`).join('')}</div>
+  <div class="mural">${rows || '<div class="empty">Nada registrado neste período.</div>'}</div></section></div>`;
+}
+function dur(ms) { const h = ms / H; return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1).replace('.', ',')} d`; }
+function renderAnalise() {
+  const m = me();
+  if (!m.lider && m.setor !== 'adm') return `<div class="page"><div class="empty">Disponível para líderes e ADM.</div></div>`;
+  const T = teamSel(), now = Date.now(), L = S.dem.filter(d => live(d) && d.setor === T);
+  const members = USERS.filter(u => u.setor === T && !u.inativo);
+  const doneEv = teamEvents(T, now - 30 * D).filter(([e]) => DONE_KINDS.includes(e.kind) && U(e.by).setor === T);
+  const rows = members.map(u => {
+    const op = L.filter(d => d.assignee === u.id && d.status !== 'concluida');
+    const c7 = doneEv.filter(([e]) => e.by === u.id && e.at > now - 7 * D).length, c30 = doneEv.filter(([e]) => e.by === u.id).length;
+    const fin = L.filter(d => d.status === 'concluida' && d.assignee === u.id && doneAt(d) > now - 30 * D);
+    const avg = fin.length ? fin.reduce((s, d) => s + (doneAt(d) - assumedAt(d)), 0) / fin.length : null;
+    return { u, open: op.length, and: op.filter(d => d.status === 'andamento').length, wait: op.filter(d => d.status === 'aguardando').length, late: op.filter(overdue).length, c7, c30, avg };
+  });
+  const days = [...Array(14)].map((_, i) => { const t0 = new Date(now - (13 - i) * D); t0.setHours(0, 0, 0, 0); const t1 = t0.getTime() + D; return [t0, doneEv.filter(([e]) => e.at >= t0.getTime() && e.at < t1).length]; });
+  const mx = Math.max(1, ...days.map(d => d[1]));
+  const st = {}; L.filter(d => d.status !== 'concluida').forEach(d => { const s = stageName(d); st[s] = (st[s] || 0) + 1; });
+  const smx = Math.max(1, ...Object.values(st));
+  const recent = doneEv.slice(0, 15);
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">Líderes</span><h1>Análise da equipe · ${SETOR[T].nome}</h1></div><span class="sp"></span>${teamPicker()}</div>
+  <section class="panel" style="margin-bottom:16px"><h3>${ic('user')}Por pessoa</h3><div class="tablewrap" style="border:0"><table class="list" style="min-width:720px"><thead><tr><th>Pessoa</th><th>Abertas</th><th>Em andamento</th><th>Aguardando</th><th>Atrasadas</th><th>Concluídas 7 d</th><th>Concluídas 30 d</th><th>Tempo médio</th></tr></thead><tbody>
+  ${rows.map(r => `<tr data-a="teamp" data-p="${r.u.id}"><td><span style="display:flex;gap:8px;align-items:center">${av(r.u.id, 'sm')}${esc(r.u.nome)}${r.u.lider ? ' <span class="pill">líder</span>' : ''}</span></td><td class="mono">${r.open}</td><td class="mono">${r.and}</td><td class="mono">${r.wait}</td><td class="mono" style="${r.late ? 'color:var(--bad);font-weight:600' : ''}">${r.late}</td><td class="mono">${r.c7}</td><td class="mono">${r.c30}</td><td class="mono">${r.avg == null ? '—' : dur(r.avg)}</td></tr>`).join('')}
+  </tbody></table></div><p class="note" style="margin:8px 0 0">Tempo médio: de quando a pessoa assumiu até finalizar, nos últimos 30 dias. Clique numa pessoa para ver o que está com ela.</p></section>
+  <div class="dgrid"><section class="panel"><h3>${ic('chart')}Conclusões por dia · últimas 2 semanas</h3>
+    <div class="cols">${days.map(([t, n]) => `<div class="colb" title="${fd(t)}: ${n}"><span class="cv mono">${n || ''}</span><span class="cb" style="height:${n / mx * 100}%"></span><span class="cl mono">${pad(t.getDate())}</span></div>`).join('')}</div>
+    <h3 style="margin-top:20px">${ic('list')}Abertas por etapa</h3><div class="bars">${Object.entries(st).sort((a, b) => b[1] - a[1]).map(([s, n]) => `<div class="bar wide"><span>${esc(s)}</span><span class="tr"><span style="width:${n / smx * 100}%;background:var(--accent)"></span></span><span class="c">${n}</span></div>`).join('') || '<div class="empty">Nada em aberto.</div>'}</div></section>
+  <section class="panel"><h3>${ic('check')}Finalizações recentes</h3><div class="att">${recent.map(([e, rm]) => `<button data-a="open" data-rm="${rm.id}">${av(e.by, 'sm')}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(U(e.by).nome)} · ${FK[e.kind]}</span><span class="note">RM ${esc(rm.rm)} · ${esc(rm.cidade)}/${rm.uf} · ${fdt(e.at)}</span></span>${e.valor != null ? `<span class="mono note">${brl(e.valor)}</span>` : ''}</button>`).join('') || '<div class="empty">Nenhuma finalização nos últimos 30 dias.</div>'}</div>
+    <p class="note" style="margin:10px 0 0">Você recebe uma notificação no sino sempre que alguém da equipe finaliza uma atribuição.</p></section></div></div>`;
+}
+
 /* ================== render principal ================== */
 function renderInternal() {
   const v = UI.view.name;
-  const main = v === 'dash' ? renderDash() : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : renderList();
+  const main = v === 'dash' ? renderDash() : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : renderList();
   return `<div class="app ${UI.navOpen ? 'navopen' : ''}">${renderTop(false)}${renderNav()}<main class="main" id="main">${main}</main></div>`;
 }
 /* ================== modal / toast ================== */
@@ -1233,10 +1317,11 @@ function commit() { save(); const sc = $('#main')?.scrollTop; render(); const m 
 /* ================== regras de fluxo ================== */
 function finishMain(d, c) {
   const rm = rmOf(d);
-  d.status = 'concluida'; d.assignee = d.assignee || S.me; touch(d);
+  d.status = 'concluida'; d.doneAt = Date.now(); d.assignee = d.assignee || S.me; touch(d);
   const cy = rm.cycles.find(x => x.n === d.cycle);
   Object.assign(cy, { status: 'concluida', valor: c.valor, resp: c.resp, desc: c.desc, at: Date.now() });
   addFeed(rm, 'fase', `${d.cycle}ª vistoria finalizada. ${c.desc}`, { valor: c.valor, resp: c.resp });
+  notifyDone(d, `${d.cycle}ª vistoria (laudo completo)`);
   notify('cliente', `RM ${rm.rm}: ${d.cycle}ª vistoria completa, todas as etapas de laudo finalizadas.`, rm.id);
 }
 function asbuiltDone(ab) {
@@ -1246,17 +1331,20 @@ function asbuiltDone(ab) {
     if (L.stage === 2 && L.status === 'aguardando') { L.stage = 3; L.status = 'andamento'; touch(L); L.asbuiltPending = false; notify(L.assignee, `As Built do RM ${rm.rm} concluído. O laudo voltou para sua esteira (avaliação imobiliária).`, rm.id); }
     else if (L.stage === 6) {
       const u = U(L.sentBy);
-      if (!L.sentBy || u.inativo) { L.assignee = null; L.status = 'entrada'; notifySetorLeader('laudo', `RM ${rm.rm} caiu na caixa "Revisão do As Built" (responsável original inativo).`, rm.id); addFeed(rm, 'encaminhado', 'Revisão do As Built enviada para a caixa "Revisão do As Built": quem enviou o laudo está inativo.'); }
-      else { L.assignee = L.sentBy; L.status = 'andamento'; notify(L.sentBy, `As Built do RM ${rm.rm} concluído. Revise avaliação e laudo para finalizar.`, rm.id); addFeed(rm, 'encaminhado', `Revisão do As Built voltou para ${u.nome}.`); }
+      if (!L.sentBy || u.inativo) { L.assignee = null; L.status = 'entrada'; notifySetorLeader('laudo', `RM ${rm.rm} caiu na caixa "Revisão do As Built" (responsável original inativo).`, rm.id); addFeed(rm, 'encaminhado', 'Revisão do As Built enviada para a caixa "Revisão do As Built": quem enviou o laudo está inativo.', { tgt: 'laudo' }); }
+      else { L.assignee = L.sentBy; L.status = 'andamento'; notify(L.sentBy, `As Built do RM ${rm.rm} concluído. Revise avaliação e laudo para finalizar.`, rm.id); addFeed(rm, 'encaminhado', `Revisão do As Built voltou para ${u.nome}.`, { tgt: 'laudo' }); }
       touch(L);
     } else { L.asbuiltPending = false; touch(L); if (L.assignee) notify(L.assignee, `As Built do RM ${rm.rm} concluído.`, rm.id); }
   }
-  S.dem.filter(x => x.setor === 'evtl' && x.rmId === rm.id && x.status === 'aguardando').forEach(e => { e.stage = 2; e.status = 'andamento'; e.waitKind = null; touch(e); notify(e.assignee, `Desenho do RM ${rm.rm} pronto. EVTL liberado na sua esteira.`, rm.id); addFeed(rm, 'encaminhado', `EVTL voltou para a esteira de ${U(e.assignee).nome}.`); });
+  S.dem.filter(x => x.setor === 'evtl' && x.rmId === rm.id && x.status === 'aguardando').forEach(e => { e.stage = 2; e.status = 'andamento'; e.waitKind = null; touch(e); notify(e.assignee, `Desenho do RM ${rm.rm} pronto. EVTL liberado na sua esteira.`, rm.id); addFeed(rm, 'encaminhado', `EVTL voltou para a esteira de ${U(e.assignee).nome}.`, { tgt: 'evtl' }); });
 }
 
 /* ================== ações ================== */
 const A = {
-  go(ds) { UI.hist = []; UI.view = JSON.parse(ds.v); UI.more = 0; UI.navOpen = false; UI.notif = false; if (UI.view.name === 'cad') UI.cadPre = null; render(); },
+  go(ds) { UI.person = ''; UI.hist = []; UI.view = JSON.parse(ds.v); UI.more = 0; UI.navOpen = false; UI.notif = false; if (UI.view.name === 'cad') UI.cadPre = null; render(); },
+  person(ds) { UI.person = ds.p; render(); },
+  teamp(ds) { UI.hist = []; UI.view = { name: 'team' }; UI.person = ds.p; render(); },
+  mfilt(ds) { UI.mf = ds.f; render(); },
   nav() { UI.navOpen = !UI.navOpen; render(); },
   tog(ds) { UI.open[ds.k] = !UI.open[ds.k]; render(); },
   open(ds) { (UI.hist = UI.hist || []).push(UI.view); UI.view = { name: 'rm', id: ds.rm, d: ds.d }; UI.notif = false; UI.navOpen = false; render(); const el = ds.d && document.getElementById('dem-' + ds.d); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); },
@@ -1273,7 +1361,7 @@ const A = {
 
   assume(ds) {
     const d = dem(ds.id), rm = rmOf(d);
-    d.assignee = S.me; if (d.stage === 0) d.stage = 1;
+    d.assignee = S.me; d.assumedAt = Date.now(); if (d.stage === 0) d.stage = 1;
     if (d.status === 'entrada') d.status = 'andamento';
     touch(d); addFeed(rm, 'assumiu', `Assumiu: ${demTitle(d)}.`); commit(); toast('Demanda assumida. Ela está na sua esteira.');
   },
@@ -1284,7 +1372,7 @@ const A = {
       title: d.assignee ? 'Reatribuir' : 'Atribuir', intro: esc(demTitle(d)),
       body: fSel('to', 'Responsável', pool.map(u => [u.id, `${u.nome} · ${SETOR[u.setor].nome}`]), pool[0]?.id, 'c4') + fTA('nota', 'Observação', false, 'ex.: urgência pedida pelo cliente'),
       onOk(v) {
-        d.assignee = v.to; if (d.stage === 0 && d.setor !== 'bens') d.stage = 1;
+        d.assignee = v.to; d.assumedAt = Date.now(); if (d.stage === 0 && d.setor !== 'bens') d.stage = 1;
         if (d.status === 'entrada') d.status = 'andamento'; touch(d);
         addFeed(rm, 'atribuido', `Atribuído a ${U(v.to).nome}.${v.nota ? ' ' + v.nota : ''}`, { to: v.to });
         notify(v.to, `${U(S.me).nome} atribuiu a você: ${demTitle(d)}`, rm.id); toast(`Atribuído a ${U(v.to).nome}.`);
@@ -1301,14 +1389,14 @@ const A = {
   legacy(ds) {
     const d = dem(ds.id), rm = rmOf(d), n = rm.legacyTarget;
     let body = '';
-    for (let i = 1; i < n; i++) body += `<div class="f c4"><span class="eyebrow">${i}ª vistoria (antes do sistema)</span></div>` + fIn('valor' + i, 'Valor do imóvel', true, 'inputmode="decimal" placeholder="ex.: 280.000,00"') + fSel('resp' + i, 'Responsável pelo laudo', laudoUsers(), S.me) + fTA('desc' + i, 'Descrição', true, 'ex.: laudo entregue em 2024, arquivo no servidor', '');
+    for (let i = 1; i < n; i++) body += `<div class="f c4"><span class="eyebrow">${i}ª vistoria (antes do sistema)</span></div>` + fIn('valor' + i, 'Valor do imóvel', true, 'inputmode="decimal" placeholder="ex.: 280.000,00"') + fSel('resp' + i, 'Responsável pelo laudo', laudoUsers(), S.me) + fIn('data' + i, 'Data de entrega', true, 'type="date"') + fTA('desc' + i, 'Descrição (opcional)', false, 'ex.: laudo entregue em 2024, arquivo no servidor', '');
     modal({
       title: `Regularizar histórico do RM ${rm.rm}`, wide: true, intro: `Este RM chegou na <b>${n}ª vistoria</b>. Registre as vistorias anteriores para o histórico ficar completo desde o início da operação.`, body, ok: `Registrar e seguir para a ${n}ª vistoria`,
       onOk(v) {
         const cs = [];
-        for (let i = 1; i < n; i++) { const valor = parseBRL(v['valor' + i]); if (!(valor > 0)) return `Informe o valor da ${i}ª vistoria.`; if (!v['desc' + i].trim()) return `Descreva a ${i}ª vistoria.`; cs.push({ n: i, status: 'concluida', valor, resp: v['resp' + i], desc: v['desc' + i].trim(), at: Date.now(), legado: true }); }
+        for (let i = 1; i < n; i++) { const valor = parseBRL(v['valor' + i]); if (!(valor > 0)) return `Informe o valor da ${i}ª vistoria.`; if (!v['data' + i]) return `Informe a data de entrega da ${i}ª vistoria.`; const at = new Date(v['data' + i] + 'T12:00').getTime(); if (at > Date.now()) return `A data de entrega da ${i}ª vistoria não pode ser no futuro.`; cs.push({ n: i, status: 'concluida', valor, resp: v['resp' + i], desc: v['desc' + i].trim(), at, legado: true }); }
         rm.cycles = [...cs, { n, status: 'aberta' }]; rm.legacyTarget = 0; d.cycle = n; touch(d);
-        cs.forEach(c => addFeed(rm, 'regularizacao', `${c.n}ª vistoria registrada (anterior ao sistema). ${c.desc}`, { valor: c.valor, resp: c.resp }));
+        cs.forEach(c => addFeed(rm, 'regularizacao', `${c.n}ª vistoria registrada (anterior ao sistema), entregue em ${fd(c.at)}.${c.desc ? ' ' + c.desc : ''}`, { valor: c.valor, resp: c.resp }));
         S.dem.filter(x => x.rmId === rm.id && x.id !== d.id && x.status !== 'concluida' && x.cycle < n).forEach(x => x.cycle = n);
         toast(`Histórico registrado. RM na ${n}ª vistoria.`);
       }
@@ -1329,8 +1417,8 @@ const A = {
     const d = dem(ds.id), rm = rmOf(d);
     const ab = newDem(rm, { setor: 'asbuilt', tipo: 'asbuilt', cycle: d.cycle });
     notifySetorLeader('asbuilt', `Novo desenho As Built: ${rmTitle(rm, d.cycle)}`, rm.id);
-    if (ds.m === 'wait') { d.status = 'aguardando'; d.waitKind = 'asbuilt'; addFeed(rm, 'encaminhado', 'Encaminhado ao As Built. Laudo aguarda o desenho para seguir.'); }
-    else { d.asbuiltPending = true; d.stage = 3; addFeed(rm, 'encaminhado', 'Encaminhado ao As Built em paralelo. Laudo segue para avaliação imobiliária.'); }
+    if (ds.m === 'wait') { d.status = 'aguardando'; d.waitKind = 'asbuilt'; addFeed(rm, 'encaminhado', 'Encaminhado ao As Built. Laudo aguarda o desenho para seguir.', { tgt: 'asbuilt' }); }
+    else { d.asbuiltPending = true; d.stage = 3; addFeed(rm, 'encaminhado', 'Encaminhado ao As Built em paralelo. Laudo segue para avaliação imobiliária.', { tgt: 'asbuilt' }); }
     touch(d); commit(); toast(`Demanda #${ab.num} criada na caixa do As Built.`);
   },
   skipab(ds) { const d = dem(ds.id); d.status = 'andamento'; d.waitKind = null; d.stage = 3; d.asbuiltPending = true; touch(d); addFeed(rmOf(d), 'etapa', 'Seguiu para avaliação imobiliária com As Built pendente.'); commit(); },
@@ -1346,15 +1434,15 @@ const A = {
       onOk(v, f) {
         const c = readClose(v); if (typeof c === 'string') return c; const anexos = filesOf(f.querySelector('#m-files'));
         if (!isMain(d)) {
-          d.status = 'concluida'; touch(d);
+          d.status = 'concluida'; d.doneAt = Date.now(); touch(d);
           addFeed(rm, 'entrega', `${TIPO[d.tipo]} enviado ao cliente. ${c.desc}`, { valor: c.valor, resp: c.resp, anexos });
-          notify('cliente', `RM ${rm.rm}: ${TIPO[d.tipo]} concluído.`, rm.id); toast('Enviado ao cliente.'); return;
+          notify('cliente', `RM ${rm.rm}: ${TIPO[d.tipo]} concluído.`, rm.id); notifyDone(d, TIPO[d.tipo]); toast('Enviado ao cliente.'); return;
         }
         if (ab) {
           d.stage = 6; d.status = 'aguardando'; d.waitKind = 'asbuilt'; d.sentBy = S.me; d.revisao = true; touch(d);
           rm.cycles.find(x => x.n === d.cycle).valorPrev = c.valor;
           addFeed(rm, 'entrega', `Laudo enviado ao cliente com pendência de As Built. ${c.desc}`, { valor: c.valor, resp: c.resp, anexos });
-          notify('cliente', `Laudo do RM ${rm.rm} entregue. O As Built ainda está pendente.`, rm.id); toast('Laudo entregue. Aguardando As Built para revisão.');
+          notify('cliente', `Laudo do RM ${rm.rm} entregue. O As Built ainda está pendente.`, rm.id); notifyDone(d, 'laudo enviado ao cliente (As Built pendente)'); toast('Laudo entregue. Aguardando As Built para revisão.');
         } else { addFeed(rm, 'entrega', 'Laudo enviado ao cliente.', { anexos }); finishMain(d, c); toast('RM completo. Cliente notificado.'); }
       }
     });
@@ -1367,12 +1455,12 @@ const A = {
     const d = dem(ds.id), rm = rmOf(d);
     modal({
       title: 'Concluir desenho As Built', body: fTA('desc', 'Descrição', false, 'ex.: planta baixa e cortes finalizados') + fFile(), ok: 'Concluir desenho',
-      onOk(v, f) { d.status = 'concluida'; d.priority = false; touch(d); addFeed(rm, 'asbuilt', `Desenho As Built concluído. ${v.desc || ''}`.trim(), { anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `As Built do RM ${rm.rm} concluído.`, rm.id); asbuiltDone(d); toast('Desenho concluído. Demanda devolvida a Laudos/EVTL.'); }
+      onOk(v, f) { d.status = 'concluida'; d.doneAt = Date.now(); d.priority = false; touch(d); addFeed(rm, 'asbuilt', `Desenho As Built concluído. ${v.desc || ''}`.trim(), { tgt: 'laudo', anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `As Built do RM ${rm.rm} concluído.`, rm.id); notifyDone(d, 'desenho As Built'); asbuiltDone(d); toast('Desenho concluído. Demanda devolvida a Laudos/EVTL.'); }
     });
   },
   evtldone(ds) {
     const d = dem(ds.id), rm = rmOf(d);
-    modal({ title: 'Concluir EVTL', body: fTA('desc', 'Descrição', true) + fFile(), ok: 'Concluir', onOk(v, f) { if (!v.desc.trim()) return 'A descrição é obrigatória.'; d.status = 'concluida'; touch(d); addFeed(rm, 'evtl', `EVTL finalizado. ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `EVTL do RM ${rm.rm} finalizado.`, rm.id); } });
+    modal({ title: 'Concluir EVTL', body: fTA('desc', 'Descrição', true) + fFile(), ok: 'Concluir', onOk(v, f) { if (!v.desc.trim()) return 'A descrição é obrigatória.'; d.status = 'concluida'; d.doneAt = Date.now(); touch(d); addFeed(rm, 'evtl', `EVTL finalizado. ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `EVTL do RM ${rm.rm} finalizado.`, rm.id); notifyDone(d, 'EVTL'); } });
   },
   bensnext(ds) {
     const d = dem(ds.id), rm = rmOf(d), last = d.stage === 3, next = USERS.find(u => u.etapa === d.stage + 1);
@@ -1381,9 +1469,9 @@ const A = {
       body: fTA('desc', 'Descrição', true) + fFile(), ok: last ? 'Finalizar proposta' : 'Concluir etapa',
       onOk(v, f) {
         if (!v.desc.trim()) return 'A descrição é obrigatória.';
-        addFeed(rm, 'bens', `Etapa concluída: ${FLOW.bens[d.stage]}. ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) });
-        if (last) { d.status = 'concluida'; notify('cliente', `ADM Bens e Imóveis finalizado para o RM ${rm.rm}.`, rm.id); }
-        else { d.stage++; d.assignee = next.id; notify(next.id, `RM ${rm.rm} chegou na sua etapa: ${FLOW.bens[d.stage]}.`, rm.id); }
+        addFeed(rm, 'bens', `Etapa concluída: ${FLOW.bens[d.stage]}. ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notifyDone(d, `etapa ${d.stage + 1} de Bens e Imóveis`);
+        if (last) { d.status = 'concluida'; d.doneAt = Date.now(); notify('cliente', `ADM Bens e Imóveis finalizado para o RM ${rm.rm}.`, rm.id); }
+        else { d.stage++; d.assignee = next.id; d.assumedAt = Date.now(); notify(next.id, `RM ${rm.rm} chegou na sua etapa: ${FLOW.bens[d.stage]}.`, rm.id); }
         touch(d);
       }
     });
@@ -1422,7 +1510,7 @@ const A = {
   },
   corrdone(ds) {
     const d = dem(ds.id), rm = rmOf(d);
-    modal({ title: 'Concluir correção', body: fTA('desc', 'O que foi corrigido', true) + fFile(), ok: 'Concluir', onOk(v, f) { if (!v.desc.trim()) return 'Descreva o que foi corrigido.'; d.status = 'concluida'; touch(d); addFeed(rm, 'correcao', `Correção concluída: ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `Correção concluída no RM ${rm.rm}.`, rm.id); } });
+    modal({ title: 'Concluir correção', body: fTA('desc', 'O que foi corrigido', true) + fFile(), ok: 'Concluir', onOk(v, f) { if (!v.desc.trim()) return 'Descreva o que foi corrigido.'; d.status = 'concluida'; d.doneAt = Date.now(); touch(d); addFeed(rm, 'correcao', `Correção concluída: ${v.desc.trim()}`, { anexos: filesOf(f.querySelector('#m-files')) }); notify('cliente', `Correção concluída no RM ${rm.rm}.`, rm.id); USERS.filter(u => u.lider && u.id !== S.me).forEach(u => notify(u.id, `${U(S.me).nome} finalizou a correção do RM ${rm.rm}.`, rm.id)); } });
   },
   cancel(ds) {
     const rm = S.rms.find(r => r.id === ds.rm);
@@ -1468,7 +1556,7 @@ const A = {
           newDem(r, { setor: 'correcao', tipo: v.motivo === 'correcao_rm' ? 'rm' : 'outras', status: 'aguardando', waitKind: 'oks', approvals: ap, solId: so.id });
           Object.keys(ap).forEach(s => notifySetorLeader(s, `Correção no RM ${r.rm} precisa do OK de ${SETOR[s].nome}.`, r.id));
         } else { newDem(r, { tipo: v.motivo, solId: so.id }); notifySetorLeader('laudo', `Nova solicitação de ${MOTIVOS[v.motivo]} no RM ${r.rm}.`, r.id); }
-        addFeed(r, 'solicitacao', `Solicitação de ${MOTIVOS[v.motivo]}: ${so.desc}`, { anexos: so.anexos });
+        addFeed(r, 'solicitacao', `Solicitação de ${MOTIVOS[v.motivo]}: ${so.desc}`, { anexos: so.anexos, tgt: v.motivo.startsWith('correcao') ? 'correcao' : 'laudo' });
         toast('Solicitação aberta.');
       }
     });
@@ -1502,7 +1590,7 @@ const A = {
       const rm = S.rms.find(r => r.id === id), ab = S.dem.filter(d => d.rmId === id && d.setor === 'asbuilt').sort((a, b) => b.cycle - a.cycle)[0], done = ab.status === 'concluida';
       newDem(rm, { setor: 'evtl', tipo: 'evtl', cycle: ab.cycle, assignee: who, mes, stage: done ? 2 : 1, status: done ? 'andamento' : 'aguardando', waitKind: done ? null : 'desenho' });
       if (!done) { ab.priority = true; touch(ab); notifySetorLeader('asbuilt', `EVTL marcou o As Built do RM ${rm.rm} como prioridade.`, rm.id); if (ab.assignee) notify(ab.assignee, `Prioridade EVTL: As Built do RM ${rm.rm}.`, rm.id); }
-      addFeed(rm, 'encaminhado', `EVTL de ${mes} atribuído a ${U(who).nome}.${done ? '' : ' Desenho As Built marcado como prioridade.'}`);
+      addFeed(rm, 'encaminhado', `EVTL de ${mes} atribuído a ${U(who).nome}.${done ? '' : ' Desenho As Built marcado como prioridade.'}`, { tgt: done ? 'evtl' : 'asbuilt' });
       if (who !== S.me) notify(who, `EVTL do RM ${rm.rm} atribuído a você.`, rm.id);
     });
     commit(); toast(`${ids.length} EVTL(s) atribuído(s) a ${U(who).nome}.`);
@@ -1556,6 +1644,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'reng') UI.rEng = t.value;
   else if (t.id === 'rdate') UI.rDate = t.value;
   else if (t.id === 'evmes') UI.evMes = t.value;
+  else if (t.id === 'teamsel') { UI.team = t.value; UI.person = ''; render(); }
   else if (t.closest && t.closest('#cadform')) cadUpdate();
 });
 document.addEventListener('input', e => {
