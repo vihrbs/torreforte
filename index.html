@@ -437,9 +437,9 @@ const USERS = [
 ];
 const U = id => USERS.find(u => u.id === id) || { id, nome: '—', setor: '' };
 const ENGS = [
-  { id: 'kaue', nome: 'Kauê', base: [-25.43, -49.27], cor: 'var(--s-laudo)' },
-  { id: 'felipe', nome: 'Felipe', base: [-12.97, -38.50], cor: 'var(--s-asbuilt)' },
-  { id: 'paulo', nome: 'Paulo', base: [-5.09, -42.80], cor: 'var(--s-evtl)' },
+  { id: 'kaue', nome: 'Roger Almeida', base: [-25.43, -49.27], cor: 'var(--s-laudo)' },
+  { id: 'felipe', nome: 'Israel Ferreira', base: [-12.97, -38.50], cor: 'var(--s-asbuilt)' },
+  { id: 'paulo', nome: 'Diego Dias', base: [-5.09, -42.80], cor: 'var(--s-evtl)' },
 ];
 const ENG = id => ENGS.find(e => e.id === id) || { nome: id || '—' };
 const TIPO = {
@@ -591,7 +591,7 @@ function seed() {
   d.status = 'aguardando'; d.waitKind = 'material'; d.waitUntil = now - 6 * H; d.waitReason = 'Faltam fotos da fachada e do quadro elétrico.'; fe(rm, now - 30 * H, 'leticia', 'aguardando', 'Aguardando material do engenheiro: faltam fotos da fachada e do quadro elétrico. Engenheiro cobrado; prazo de 24 h.'); d.updatedAt = now - 30 * H;
   // 5 — aguardando material no prazo (Raquel)
   rm = mk(10993, 'picos', 'Jardim do Mulato', 'paulo', { classif: 'Grave', at: now - 2 * D }); d = dm(rm, {}); walk(rm, d, 'raquel', 1, now - 30 * H);
-  d.status = 'aguardando'; d.waitKind = 'material'; d.waitUntil = now + 15 * H; d.waitReason = 'Engenheiro pediu 2 dias para medir o terreno.'; fe(rm, now - 9 * H, 'raquel', 'aguardando', 'Engenheiro Paulo informou que precisa de mais 24 h para medir o terreno dos fundos.'); d.updatedAt = now - 9 * H;
+  d.status = 'aguardando'; d.waitKind = 'material'; d.waitUntil = now + 15 * H; d.waitReason = 'Engenheiro pediu 2 dias para medir o terreno.'; fe(rm, now - 9 * H, 'raquel', 'aguardando', 'Engenheiro Diego Dias informou que precisa de mais 24 h para medir o terreno dos fundos.'); d.updatedAt = now - 9 * H;
   // 6 — aguardando As Built (Raquel) + As Built com Kayque
   rm = mk(10919, 'parnaiba', 'Santo Antônio', 'paulo', { classif: 'Grave', at: now - 4 * D }); d = dm(rm, {}); t = walk(rm, d, 'raquel', 2, now - 3 * D);
   d.status = 'aguardando'; d.waitKind = 'asbuilt'; fe(rm, t + H, 'raquel', 'encaminhado', 'Encaminhado ao As Built. Aguardando desenho para seguir.');
