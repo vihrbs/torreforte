@@ -439,6 +439,12 @@ select.btn{padding-right:28px}
 .meta .evt span{background:var(--accent)}
 .list tr.tot td{background:var(--surface-2)}
 @media (max-width:860px){.metas{grid-template-columns:1fr}}
+.kpis.kauto{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpis.kauto .v{font-size:26px}
+.eqrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.list.fech tr.curm td{background:var(--accent-soft)}
+#cfgform .f select{height:36px}
+@media (max-width:860px){#cfgform{grid-template-columns:1fr 1fr!important}}
 body{margin:0}</style></head><body>
 <div id="app"></div><div id="modal-root"></div>
 <script>
@@ -1355,7 +1361,7 @@ function renderMural() {
 /* ================== render principal ================== */
 function renderInternal() {
   const v = UI.view.name;
-  const main = v === 'dash' ? (me().setor === 'gestao' ? renderGestao() : me().setor === 'dados' ? renderVist() : renderDash()) : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : v === 'gestao' ? renderGestao() : v === 'vist' ? renderVist() : v === 'vrm' ? renderVRM() : v === 'contatos' ? renderContatos() : v === 'engs' ? renderEngs() : v === 'ocorr' ? renderOcorr() : v === 'extrair' ? renderExtrair() : renderList();
+  const main = v === 'dash' ? (me().setor === 'gestao' ? renderGestao() : me().setor === 'dados' ? renderVist() : renderDash()) : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : v === 'gestao' ? renderGestao() : v === 'vist' ? renderVist() : v === 'fech' ? renderFech() : v === 'vrm' ? renderVRM() : v === 'contatos' ? renderContatos() : v === 'engs' ? renderEngs() : v === 'ocorr' ? renderOcorr() : v === 'extrair' ? renderExtrair() : renderList();
   return `<div class="app ${UI.navOpen ? 'navopen' : ''} ${UI.present ? 'present' : ''}">${UI.present ? `<button class="btn exitp" data-a="present">${ic('x', 'sm')}Sair da apresentação</button>` : ''}${renderTop(false)}${renderNav()}<main class="main" id="main">${main}</main></div>`;
 }
 /* ================== modal / toast ================== */
@@ -1806,7 +1812,10 @@ const TW = {
   resumo: { t: 'Resumo', l: true, r(ts) {
     const ms = ts.map(metrics), sum = k => ms.reduce((n, m) => n + m[k].length, 0);
     const done = ms.flatMap(m => m.done), avg = done.length ? done.reduce((s, d) => s + (doneAt(d) - d.createdAt), 0) / done.length : null;
-    return `<div class="kpis k6" style="margin:0">${tile('Entregas (' + perLabel() + ')', sum('done'))}${tile('Gordura (em aberto)', sum('open'), 'warn')}${tile('Tempo médio por requisição', dur(avg))}${tile('Na caixa sem responsável', ms.reduce((n, m) => n + m.inbox, 0))}${tile('Material atrasado', ms.reduce((n, m) => n + m.late, 0), 'bad')}${tile('Pessoas', ms.reduce((n, m) => n + m.people.length, 0))}</div>`; } },
+    const open = ms.flatMap(m => m.open), q = open.filter(d => d.status === 'entrada').length, s0 = perStart();
+    const m2 = m2sum(abDone([s0, Date.now() + 1]));
+    const porEq = ms.length > 1 ? `<div class="eqrow">${ms.map(m => `<span class="chip">${setorTag(m.T)} <b class="mono">${m.done.length}</b> entregas</span>`).join('')}<span class="chip"><span class="setor s-asbuilt">m² As Built</span> <b class="mono">${m2f(m2)}</b></span></div>` : '';
+    return `<div class="kpis kauto" style="margin:0">${tile('Entregas (' + perLabel() + ')', sum('done'))}${ts.includes('asbuilt') ? tile('m² de área construída entregue', m2f(m2), '', perLabel()) : ''}${tile('A realizar · gordura', sum('open'), 'warn', `não finalizadas: ${q} na caixa · ${open.length - q} assumidas`)}${tile('Tempo médio por requisição', dur(avg))}${tile('Na caixa sem responsável', ms.reduce((n, m) => n + m.inbox, 0))}${tile('Material atrasado', ms.reduce((n, m) => n + m.late, 0), 'bad')}${tile('Pessoas', ms.reduce((n, m) => n + m.people.length, 0))}</div>${porEq}`; } },
   equipes: { t: 'Comparativo por equipe', l: true, multi: true, r(ts) {
     return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:640px"><thead><tr><th>Equipe</th><th>Entregas</th><th>Gordura</th><th>Tempo médio</th><th>Na caixa</th><th>Atrasadas</th><th>Pessoas</th></tr></thead><tbody>${ts.map(metrics).map(m => `<tr data-a="gtab" data-t="${m.T}"><td>${setorTag(m.T)}</td><td class="mono">${m.done.length}</td><td class="mono">${m.open.length}</td><td class="mono">${dur(m.avg)}</td><td class="mono">${m.inbox}</td><td class="mono">${m.late}</td><td class="mono">${m.people.length}</td></tr>`).join('')}</tbody></table></div>`; } },
   pessoa: { t: 'Realizado por pessoa', r(ts) {
@@ -1863,8 +1872,8 @@ Object.assign(TW, {
   m2: { t: 'As Built · m² de área construída entregue', l: true, r() {
     const now = Date.now(), q = quinz(now), m = mesW(now), W = windows();
     const people = USERS.filter(u => u.setor === 'asbuilt' && !u.inativo);
-    return `<div class="metas">${meta(`Quinzena atual (${qLab(q)})`, m2sum(abDone(q)), M2_META_Q)}${meta(`Mês de ${MESES[new Date(m[0]).getMonth()]}`, m2sum(abDone(m)), M2_META_MES)}<div class="meta"><div class="mh"><span>Total até hoje</span><b class="mono">${m2f(m2sum(abDone([0, now + 1])))}</b></div><span class="note">terreno desenhado: ${m2f(m2sum(abDone([0, now + 1]), 'm2t'))}</span></div></div>
-    <div class="tablewrap" style="border:0;margin-top:12px"><table class="list" style="min-width:720px"><thead><tr><th>Pessoa</th><th>Quinzena atual</th><th>Mês atual</th><th>Até hoje</th><th>Terreno no mês</th><th>Requisições no mês</th></tr></thead><tbody>${people.map(u => `<tr><td><span style="display:flex;gap:8px;align-items:center">${av(u.id, 'sm')}${esc(u.nome)}</span></td><td class="mono">${m2f(m2sum(abDone(q, u.id)))}</td><td class="mono">${m2f(m2sum(abDone(m, u.id)))}</td><td class="mono">${m2f(m2sum(abDone([0, now + 1], u.id)))}</td><td class="mono">${m2f(m2sum(abDone(m, u.id), 'm2t'))}</td><td class="mono">${abDone(m, u.id).length}</td></tr>`).join('')}</tbody></table></div><p class="note" style="margin:8px 0 0">Meta: ${m2f(M2_META_MES)} por mês, acompanhada por quinzena (${m2f(M2_META_Q)}).</p>`; } },
+    return `<div class="metas">${meta(`Quinzena atual (${qLab(q)})`, m2sum(abDone(q)), (metaAB() / 2))}${meta(`Mês de ${MESES[new Date(m[0]).getMonth()]}`, m2sum(abDone(m)), metaAB())}<div class="meta"><div class="mh"><span>Total até hoje</span><b class="mono">${m2f(m2sum(abDone([0, now + 1])))}</b></div><span class="note">terreno desenhado: ${m2f(m2sum(abDone([0, now + 1]), 'm2t'))}</span></div></div>
+    <div class="tablewrap" style="border:0;margin-top:12px"><table class="list" style="min-width:720px"><thead><tr><th>Pessoa</th><th>Quinzena atual</th><th>Mês atual</th><th>Até hoje</th><th>Terreno no mês</th><th>Requisições no mês</th></tr></thead><tbody>${people.map(u => `<tr><td><span style="display:flex;gap:8px;align-items:center">${av(u.id, 'sm')}${esc(u.nome)}</span></td><td class="mono">${m2f(m2sum(abDone(q, u.id)))}</td><td class="mono">${m2f(m2sum(abDone(m, u.id)))}</td><td class="mono">${m2f(m2sum(abDone([0, now + 1], u.id)))}</td><td class="mono">${m2f(m2sum(abDone(m, u.id), 'm2t'))}</td><td class="mono">${abDone(m, u.id).length}</td></tr>`).join('')}</tbody></table></div><p class="note" style="margin:8px 0 0">Meta: ${m2f(metaAB())} por mês, acompanhada por quinzena (${m2f((metaAB() / 2))}).</p>`; } },
   'oc-equipe': { t: 'Ocorrências de documentação por equipe', l: true, r() { const P = pendIn(); return docTable(['laudo', 'asbuilt', 'evtl', 'bens'].filter(T => P.some(p => pSetor(p) === T)).map(T => [setorTag(T), p => pSetor(p) === T]), P) + `<p class="note" style="margin:8px 0 0">Equipe que abriu a ocorrência · ${perLabel()}. Tempo de espera: da abertura até a regularização (abertas contam até agora).</p>`; } },
   'oc-eng': { t: 'Ocorrências de documentação por engenheiro', l: true, r() { const P = pendIn(); return docTable(ENGS.map(e => [`<span class="dot-l" style="color:${e.cor};display:inline-block;margin-right:6px"></span>${esc(e.nome)}`, p => p.eng === e.id]), P); } },
   evol: { t: 'Bens e Imóveis · evolução de obra', l: true, r() {
@@ -1925,7 +1934,7 @@ function renderAnalise() {
 function renderGestao() {
   if (me().setor !== 'gestao') return `<div class="page"><div class="empty">Disponível apenas para Gestão.</div></div>`;
   const gt = UI.gt || 'all', ts = gt === 'all' ? TEAMS : [gt];
-  const tabs = `<div class="ctabs">${[['all', 'Visão geral'], ...TEAMS.map(t => [t, tnm(t)])].map(([k, l]) => `<button class="${gt === k ? 'on' : ''}" data-a="gtab" data-t="${k}">${l}</button>`).join('')}</div>`;
+  const tabs = `<div class="ctabs">${[['all', 'Visão geral'], ...TEAMS.map(t => [t, tnm(t)])].map(([k, l]) => `<button class="${gt === k ? 'on' : ''}" data-a="gtab" data-t="${k}">${l}</button>`).join('')}<button data-a="go" data-v='{"name":"fech"}'>Fechamento mensal</button></div>`;
   return dashShell('gestao', TW, gt === 'all' ? 'Painel de gestão' : `Gestão · ${tnm(gt)}`, 'Gestão · informações até ' + fdt(Date.now()), { tabs, multi: ts.length > 1 }, ts);
 }
 function renderEngs() {
@@ -1936,6 +1945,7 @@ function renderEngs() {
 function renderNavGestao() {
   return `<aside class="nav">
     ${navBtn('Painel de gestão', { name: 'gestao' }, null, 'chart')}
+    ${navBtn('Fechamento mensal', { name: 'fech' }, null, 'cal')}
     ${navBtn('Engenheiros externos', { name: 'engs' }, null, 'user')}
     ${navBtn('Ocorrências dos engenheiros', { name: 'ocorr' }, S.ocorr.length + S.pend.length, 'flag')}
     ${navBtn('Extração para Excel', { name: 'extrair' }, null, 'table')}
@@ -1994,7 +2004,7 @@ const XCOLS = [
   ['resplaudo', 'Responsável pelo laudo', d => { const c = rmOf(d).cycles.find(c => c.n === d.cycle) || {}; return c.resp ? U(c.resp).nome : ''; }],
   ['pend', 'Ocorrências de documentação', d => S.pend.filter(p => p.rmId === d.rmId).length], ['m2c', 'Área construída (m²)', d => d.m2c ?? ''], ['m2t', 'Área de terreno (m²)', d => d.m2t ?? ''], ['evol', 'Evolução da obra (%)', d => d.setor === 'bens' ? (d.evol || 0) : ''], ['atraso', 'Material atrasado', d => overdue(d) ? 'Sim' : 'Não'],
 ];
-const XSHEETS = [['req', 'Requisições'], ['pessoa', 'Resumo por pessoa'], ['pend', 'Ocorrências de documentação'], ['eng', 'Resultados dos engenheiros'], ['ocorr', 'Ocorrências'], ['hist', 'Histórico de acontecimentos']];
+const XSHEETS = [['fech', 'Fechamento mensal (entregas × gordura)'], ['req', 'Requisições'], ['pessoa', 'Resumo por pessoa'], ['pend', 'Ocorrências de documentação'], ['eng', 'Resultados dos engenheiros'], ['ocorr', 'Ocorrências'], ['hist', 'Histórico de acontecimentos']];
 function renderExtrair() {
   const m = me(), all = ['gestao', 'adm'].includes(m.setor);
   if (!all && !m.lider) return `<div class="page"><div class="empty">Disponível para líderes, ADM e Gestão.</div></div>`;
@@ -2083,6 +2093,7 @@ async function genXlsx() {
   if (sheets.includes('pend')) add('Pendências engenheiros', S.pend.filter(p => p.at >= s0).sort((a, b) => b.at - a.at).map(p => { const rm = S.rms.find(r => r.id === p.rmId) || {}; return { Engenheiro: ENG(p.eng).nome, RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, 'O que falta': docTxt(p), Equipe: SETOR[pSetor(p)] ? SETOR[pSetor(p)].nome : '', Observação: p.obs || '', 'Cobrado por': U(p.by).nome, 'Cobrado em': new Date(p.at), 'Prazo (h)': p.prazo, 'Regularizado em': p.resolvedAt ? new Date(p.resolvedAt) : '', 'Tempo até regularizar (h)': p.resolvedAt ? Math.round((p.resolvedAt - p.at) / H * 10) / 10 : '', Situação: p.resolvedAt ? 'Regularizada' : (Date.now() - p.at > p.prazo * H ? 'Atrasada' : 'Aberta') }; }));
   if (sheets.includes('eng')) add('Engenheiros', ENGS.map(engData).map(x => ({ Engenheiro: x.e.nome, 'Vistorias realizadas': x.cyc.length, '1ª vistoria': x.cyc.filter(([c]) => c.n === 1).length, '2ª vistoria': x.cyc.filter(([c]) => c.n === 2).length, '3ª ou mais': x.cyc.filter(([c]) => c.n >= 3).length, 'As Built': x.cyc.filter(([c]) => c.desenho !== 'croqui').length, Croqui: x.cyc.filter(([c]) => c.desenho === 'croqui').length, Pendências: x.P.length, 'Pendências abertas': x.open.length, 'Tempo médio regularização (h)': x.reg == null ? '' : Math.round(x.reg / H * 10) / 10, 'Tempo médio por vistoria (h)': x.tdur == null ? '' : Math.round(x.tdur * 10) / 10, Ocorrências: x.oc.length })));
   if (sheets.includes('ocorr')) add('Ocorrências', S.ocorr.filter(o => o.at >= s0).sort((a, b) => b.at - a.at).map(o => ({ Data: new Date(o.at), Engenheiro: ENG(o.eng).nome, Tipo: o.tipo, Gravidade: o.grav, RM: o.rmId ? (S.rms.find(r => r.id === o.rmId) || {}).rm : '', Descrição: o.desc, 'Registrada por': U(o.by).nome })));
+  if (sheets.includes('fech')) add('Fechamento mensal', teams.filter(t => TEAMS.includes(t)).flatMap(T => ledger(T, 12).map(r => ({ Equipe: tnm(T), Mês: mesNome(r.a), Unidade: UNI[T], 'Meta / base': r.quota, 'Finalizadas no mês': r.fin, 'Adiantadas do mês anterior': r.vindo, 'Entregues no mês': r.ent, 'Adiantadas p/ próximo mês': r.adi, 'Gordura (não finalizadas)': r.gord, 'Gordura na caixa': r.gCaixa, 'Mês em andamento': r.cur ? 'Sim' : '' }))));
   if (sheets.includes('hist')) { const rows = []; S.rms.forEach(rm => rm.feed.forEach(e => { if (e.at >= s0 && teams.some(T => evFor(e, T))) rows.push({ 'Data e hora': new Date(e.at), RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, Pessoa: U(e.by).nome, Setor: SETOR[U(e.by).setor] ? SETOR[U(e.by).setor].nome : '', Tipo: FK[e.kind] || e.kind, Descrição: e.text, 'Valor do imóvel': e.valor || '' }); })); rows.sort((a, b) => b['Data e hora'] - a['Data e hora']); add('Histórico', rows); }
   UI.per = saveP;
   const name = `torre-forte-${teams.length === 1 ? teams[0] : 'equipes'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -2123,12 +2134,12 @@ function vtable(rows, V) {
   return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:420px"><thead><tr><th></th><th>Realizadas</th><th>A realizar</th><th>Total no mês</th></tr></thead><tbody>${rows.map(([l, f]) => { const it = V.items.filter(f); return `<tr><td>${l}</td><td class="mono">${it.filter(x => x.done).length}</td><td class="mono">${it.filter(x => !x.done).length}</td><td class="mono"><b>${it.length}</b></td></tr>`; }).join('')}</tbody></table></div>`;
 }
 const VW = {
-  'v-resumo': { t: 'Resumo do mês', l: true, r(V) { const r = V.items.filter(x => x.done).length, p = V.items.length - r; const late = V.items.filter(x => !x.done && x.t < new Date().setHours(0, 0, 0, 0)).length;
+  'v-resumo': { t: 'Resumo do mês', l: true, r(V) { if (['dados', 'gestao'].includes(me().setor)) return resumoEsteira(V); const r = V.items.filter(x => x.done).length, p = V.items.length - r; const late = V.items.filter(x => !x.done && x.t < new Date().setHours(0, 0, 0, 0)).length;
     return `<div class="kpis k6" style="margin:0;grid-template-columns:repeat(4,minmax(0,1fr))">${tile('Vistorias no mês', V.items.length)}${tile('Realizadas', r, '', V.items.length ? Math.round(r / V.items.length * 100) + '% do mês' : '')}${tile('A realizar', p, '', late ? `${late} com data já passada` : '')}${tile('Média por dia útil', (r / Math.max(1, workDays(V, true))).toFixed(1).replace('.', ','), '', 'realizadas até hoje')}</div>`; } },
   'v-real-dia': { t: 'Vistorias realizadas por dia', l: true, r(V) { return dayCols(V, true); } },
   'v-real-eng': { t: 'Realizadas por engenheiro', r(V) { const it = V.items.filter(x => x.done); return hbars(ENGS.map(e => ({ l: e.nome, v: it.filter(x => x.eng === e.id).length, c: e.cor, dot: e.cor }))); } },
   'v-prev-dia': { t: 'Vistorias a realizar por dia', l: true, r(V) { return dayCols(V, false) + '<p class="note" style="margin:8px 0 0">Inclui RMs já cadastrados com data futura e imóveis na agenda dos engenheiros.</p>'; } },
-  'v-prev-eng': { t: 'A realizar por engenheiro', r(V) { const it = V.items.filter(x => !x.done); return hbars(ENGS.map(e => ({ l: e.nome, v: it.filter(x => x.eng === e.id).length, c: e.cor, dot: e.cor }))); } },
+  'v-prev-eng': { t: 'A realizar por engenheiro', r(V) { if (['dados', 'gestao'].includes(me().setor)) { const o = abertasEsteira().filter(d => ['laudo', 'asbuilt'].includes(d.setor)); return hbars(ENGS.map(e => ({ l: e.nome, v: o.filter(d => rmOf(d).eng === e.id).length, c: e.cor, dot: e.cor }))) + '<p class="note" style="margin:8px 0 0">Requisições de Laudos e As Built não finalizadas, pelo engenheiro do RM.</p>'; } const it = V.items.filter(x => !x.done); return hbars(ENGS.map(e => ({ l: e.nome, v: it.filter(x => x.eng === e.id).length, c: e.cor, dot: e.cor }))); } },
   'v-tipo': { t: 'Por tipo de vistoria', r(V) { return vtable([1, 2, 3, 4].map(n => [nLab(n), x => (n === 4 ? x.n >= 4 : x.n === n)]), V); } },
   'v-desenho': { t: 'Por tipo de desenho', r(V) { return vtable([['As Built', x => x.des === 'asbuilt'], ['Croqui', x => x.des === 'croqui']], V); } },
   'v-tipodes': { t: 'Tipo de vistoria + desenho', l: true, r(V) {
@@ -2210,6 +2221,7 @@ function contatoModal(rmId, cid) {
 function renderNavDados() {
   return `<aside class="nav">
     ${navBtn('Painel de análise', { name: 'vist' }, null, 'chart')}
+    ${navBtn('Fechamento mensal', { name: 'fech' }, null, 'cal')}
     ${navBtn('Vistorias por RM', { name: 'vrm' }, null, 'list')}
     ${navBtn('Extração para Excel', { name: 'extrair' }, null, 'table')}
     <h4><span>Consulta</span></h4>
@@ -2224,6 +2236,69 @@ Object.assign(A, {
   copy(ds) { const t = ds.t; try { navigator.clipboard.writeText(t).then(() => toast('Copiado.'), () => toast(t)); } catch (e) { toast(t); } },
 });
 document.addEventListener('input', e => { const t = e.target; if (t.id === 'vq') { UI.vq = t.value; render(); } else if (t.id === 'cq') { UI.cq = t.value; render(); } });
+
+/* ================== A realizar pela esteira + fechamento mensal (entrega × gordura) ================== */
+const abertasEsteira = () => S.dem.filter(d => !rmOf(d).cancelado && d.status !== 'concluida' && d.setor !== 'correcao');
+function resumoEsteira(V) {
+  const r = V.items.filter(x => x.done).length, o = abertasEsteira(), q = o.filter(d => d.status === 'entrada').length, ag = V.items.filter(x => !x.done).length;
+  const by = TEAMS.map(T => `${tnm(T)} ${o.filter(d => d.setor === T).length}`).join(' · ');
+  return `<div class="kpis kauto" style="margin:0">${tile('Vistorias realizadas no mês', r)}${tile('A realizar (na esteira)', o.length, 'warn', `${q} na caixa · ${o.length - q} assumidas, não finalizadas`)}${tile('Total', r + o.length, '', 'realizadas + a realizar')}${tile('Agendadas no mês', ag, '', 'data de vistoria futura')}${tile('Média por dia útil', (r / Math.max(1, workDays(V, true))).toFixed(1).replace('.', ','), '', 'realizadas até hoje')}</div><p class="note" style="margin:8px 0 0">A realizar por equipe: ${by}. Conta toda requisição não finalizada, assumida ou não.</p>`;
+}
+const cfg = () => (S.cfg = S.cfg || { base: 'meta', metas: { laudo: 20, asbuilt: 9000, evtl: 6, bens: 10 } });
+const metaAB = () => +cfg().metas.asbuilt || 9000;
+const UNI = { laudo: 'laudos', asbuilt: 'm²', evtl: 'EVTLs', bens: 'propostas' };
+const fmtU = (T, v) => T === 'asbuilt' ? m2f(v) : `${Math.round(v)}`;
+function ledger(T, nMonths = 6) {
+  const now = Date.now(), L = S.dem.filter(d => d.setor === T && !rmOf(d).cancelado), val = d => T === 'asbuilt' ? (d.m2c || 0) : 1;
+  const cur = mesW(now); let a = cur[0]; const ms = [];
+  for (let i = 0; i < 12; i++) { ms.unshift(mesW(a)); a = mesW(a - 1)[0]; }
+  const firstData = Math.min(...L.map(d => d.createdAt), now);
+  const useRec = cfg().base === 'recebidas' && T !== 'asbuilt';
+  let credit = 0; const rows = [];
+  ms.filter(([, b]) => b > firstData).forEach(([a, b]) => {
+    const fin = L.filter(d => d.status === 'concluida' && doneAt(d) >= a && doneAt(d) < b).reduce((s, d) => s + val(d), 0);
+    const rec = L.filter(d => d.createdAt >= a && d.createdAt < b).length;
+    const quota = useRec ? rec : (+cfg().metas[T] || 0), vindo = credit, avail = fin + credit, ent = Math.min(avail, quota); credit = avail - ent;
+    const end = Math.min(b, now), gord = L.filter(d => d.createdAt < end && (d.status !== 'concluida' || doneAt(d) >= end));
+    rows.push({ a, b, cur: b > now, quota, rec, fin, vindo, ent, adi: credit, gord: gord.length, gCaixa: gord.filter(d => d.status === 'entrada').length });
+  });
+  return rows.slice(-nMonths);
+}
+const mesNome = a => `${MESES[new Date(a).getMonth()]}${new Date(a).getFullYear() !== new Date().getFullYear() ? '/' + new Date(a).getFullYear() : ''}`;
+function fechTable(T) {
+  const R = ledger(T), u = UNI[T];
+  return `<div class="tablewrap" style="border:0"><table class="list fech" style="min-width:900px"><thead><tr><th>Mês</th><th>${cfg().base === 'recebidas' && T !== 'asbuilt' ? 'Recebidas no mês (base)' : 'Meta do mês'}</th><th>Finalizadas no mês</th><th>Adiantadas do mês anterior</th><th>Entregues no mês</th><th>Adiantadas p/ o próximo mês</th><th>Gordura: não finalizadas</th><th>Sobra para o próximo mês</th></tr></thead><tbody>
+  ${R.slice().reverse().map(r => `<tr class="${r.cur ? 'curm' : ''}"><td><b>${mesNome(r.a)}</b>${r.cur ? ` <span class="pill acc">até ${fd(Date.now())}</span>` : ''}</td><td class="mono">${fmtU(T, r.quota)}</td><td class="mono">${fmtU(T, r.fin)}</td><td class="mono">${r.vindo ? '+' + fmtU(T, r.vindo) : '—'}</td><td class="mono"><b>${fmtU(T, r.ent)}</b>${r.quota ? ` <span class="muted">(${Math.round(r.ent / r.quota * 100)}%)</span>` : ''}</td><td class="mono">${r.adi ? `<span class="pill ok">+${fmtU(T, r.adi)}</span>` : '—'}</td><td class="mono">${r.gord} <span class="muted">(${r.gCaixa} na caixa)</span></td><td class="mono"><b>${T === 'asbuilt' ? `${r.gord} req.${r.adi ? ' + ' + m2f(r.adi) : ''}` : r.gord + Math.round(r.adi)}</b></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+const FECH_TW = { fech: { t: 'Fechamento do mês · entregas × gordura', l: true, r(ts) {
+  const rows = ts.filter(T => TEAMS.includes(T)).map(T => { const r = ledger(T, 1)[0] || { quota: 0, fin: 0, vindo: 0, ent: 0, adi: 0, gord: 0, gCaixa: 0 }; return [T, r]; });
+  return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:760px"><thead><tr><th>Equipe</th><th>Meta / base</th><th>Entregues no mês</th><th>Adiantadas</th><th>Gordura (não finalizadas)</th><th>Situação</th></tr></thead><tbody>${rows.map(([T, r]) => `<tr data-a="go" data-v='{"name":"fech"}'><td>${setorTag(T)}</td><td class="mono">${fmtU(T, r.quota)}</td><td class="mono"><b>${fmtU(T, r.ent)}</b></td><td class="mono">${r.adi ? '+' + fmtU(T, r.adi) : '—'}</td><td class="mono">${r.gord}</td><td>${r.ent >= r.quota && r.quota ? pill(['ok', r.adi ? 'Meta batida · adiantada' : 'Meta batida']) : pill(['warn', `Faltam ${fmtU(T, r.quota - r.ent)}`])}</td></tr>`).join('')}</tbody></table></div><p class="note" style="margin:8px 0 0">Mês de ${MESES[new Date().getMonth()]} até ${fdt(Date.now())}. Detalhes por mês em "Fechamento mensal".</p>`; } } };
+Object.assign(TW, FECH_TW);
+VW.fech = { t: FECH_TW.fech.t, l: true, r: () => FECH_TW.fech.r(TEAMS) };
+DEF.gestao = ['resumo', 'fech', ...DEF.gestao.filter(k => k !== 'resumo')];
+DEF.vist = ['v-resumo', 'fech', ...DEF.vist.filter(k => k !== 'v-resumo')];
+function renderFech() {
+  const m = me(); if (!['gestao', 'dados'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para Gestão e Análise de dados.</div></div>`;
+  const can = m.setor === 'gestao', c = cfg(), T = UI.ft || 'laudo';
+  const cur = ledger(T, 1)[0];
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">${SETOR[m.setor].nome} · dados até ${fdt(Date.now())}</span><h1>Fechamento mensal · entregas × gordura</h1></div></div>
+  <section class="panel" style="margin-bottom:16px"><h3>${ic('flag')}Como a conta é feita</h3>
+    <p style="margin:0 0 6px">Cada mês a equipe tem uma ${c.base === 'meta' ? '<b>meta</b>' : 'base igual às <b>requisições recebidas no mês</b>'}. Só entra como <b>entrega do mês</b> o que cabe nessa base. O que for finalizado além dela é <b>adiantado</b> e conta como entrega do mês seguinte. Tudo que não foi finalizado (na caixa ou assumido e pendente) é <b>gordura</b>.</p>
+    <p class="note" style="margin:0">Exemplo: meta de 40 laudos e 55 finalizados em setembro → 40 entregues em setembro, 15 adiantados para outubro. A sobra para outubro soma os 15 adiantados com tudo que ficou sem finalizar.</p>
+    ${can ? `<form id="cfgform" class="form" style="margin-top:14px;grid-template-columns:repeat(5,minmax(0,1fr))"><div class="f"><label>Base da contagem</label><select name="base"><option value="meta" ${c.base === 'meta' ? 'selected' : ''}>Meta mensal</option><option value="recebidas" ${c.base === 'recebidas' ? 'selected' : ''}>Requisições recebidas no mês</option></select></div>${TEAMS.map(t => `<div class="f"><label>Meta ${tnm(t)} (${UNI[t]})</label><input name="m_${t}" type="number" min="0" value="${c.metas[t]}"></div>`).join('')}<div class="f c4" style="flex-direction:row;justify-content:flex-end"><button type="submit" class="btn pri">Salvar metas</button></div></form>` : `<p class="note" style="margin:10px 0 0">Metas atuais: ${TEAMS.map(t => `${tnm(t)} ${fmtU(t, c.metas[t])}${t === 'asbuilt' ? '' : ' ' + UNI[t]}`).join(' · ')}. Base: ${c.base === 'meta' ? 'meta mensal' : 'requisições recebidas no mês'}. Só a Gestão altera.</p>`}
+  </section>
+  <div class="ctabs">${TEAMS.map(t => `<button class="${T === t ? 'on' : ''}" data-a="ftab" data-t="${t}">${tnm(t)}</button>`).join('')}</div>
+  ${cur ? `<div class="kpis kauto">${tile(`Meta de ${MESES[new Date().getMonth()]}`, fmtU(T, cur.quota))}${tile('Entregues no mês', fmtU(T, cur.ent), '', cur.vindo ? `inclui ${fmtU(T, cur.vindo)} adiantadas de ${MESES[new Date(mesW(cur.a - 1)[0]).getMonth()]}` : '')}${tile('Adiantadas p/ o próximo mês', cur.adi ? '+' + fmtU(T, cur.adi) : '0')}${tile('Gordura: não finalizadas', cur.gord, 'warn', `${cur.gCaixa} na caixa · ${cur.gord - cur.gCaixa} assumidas`)}${tile('Faltam para a meta', fmtU(T, Math.max(0, cur.quota - cur.ent)))}</div>` : ''}
+  <section class="panel">${fechTable(T)}<p class="note" style="margin:8px 0 0">${T === 'asbuilt' ? 'As Built conta em m² de área construída; a gordura é contada em requisições.' : `Contagem em ${UNI[T]} finalizados.`} Gordura no fim de cada mês: requisições criadas até o fim do mês que ainda não estavam finalizadas naquela data.</p></section></div>`;
+}
+Object.assign(A, { ftab(ds) { UI.ft = ds.t; render(); } });
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'cfgform') return;
+  const v = Object.fromEntries(new FormData(e.target)), c = cfg();
+  c.base = v.base; TEAMS.forEach(t => { const n = +v['m_' + t]; if (n >= 0) c.metas[t] = n; });
+  commit(); toast('Metas salvas.');
+});
 
 load();
 render();
