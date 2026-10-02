@@ -429,8 +429,8 @@ const USERS = [
   { id: 'david', nome: 'David', setor: 'asbuilt' },
   { id: 'jessika', nome: 'Jessika', setor: 'evtl', lider: true },
   { id: 'thaina', nome: 'Thainá', setor: 'evtl' },
-  { id: 'isabelly', nome: 'Isabelly', setor: 'bens', lider: true, etapa: 0 },
-  { id: 'leticiab', nome: 'Letícia (Bens)', setor: 'bens', etapa: 1 },
+  { id: 'isabelly', nome: 'Isabelly', setor: 'bens', etapa: 0 },
+  { id: 'leticiab', nome: 'Letícia F', setor: 'bens', lider: true, etapa: 1 },
   { id: 'ricardo', nome: 'Ricardo', setor: 'bens', etapa: 2 },
   { id: 'fernanda', nome: 'Fernanda', setor: 'bens', etapa: 3 },
   { id: 'cliente', nome: 'Cliente', setor: 'cliente' },
@@ -756,7 +756,7 @@ function viewItems(v) {
   const m = me();
   switch (v.name) {
     case 'mine': return S.dem.filter(d => live(d) && d.assignee === m.id && d.status !== 'concluida');
-    case 'pend': return S.dem.filter(d => live(d) && (d.status === 'aguardando' || (d.status === 'entrada' && d.stage === 6)));
+    case 'pend': return S.dem.filter(d => live(d) && inMySetor(d) && (d.status === 'aguardando' || (d.status === 'entrada' && d.stage === 6)));
     case 'all': return S.dem.filter(d => d.setor !== 'bens' || UI.showBens);
     case 'canc': return S.dem.filter(d => rmOf(d).cancelado && d.status !== 'concluida');
     case 'box': return boxItems(v.box, v.key, v.cyc);
@@ -771,7 +771,15 @@ function viewTitle(v) {
   if (v.name === 'box') { const b = BOXES.find(b => b.k === v.key); return `${v.box === 'in' ? 'Caixa de entrada' : 'Caixa de saída'} · ${b.l}${v.cyc ? ` · ${v.cyc}ª Vistoria${v.cyc === 4 ? '+' : ''}` : ''}`; }
   return '';
 }
-function visibleBoxes() { return BOXES.filter(b => !b.leader || me().lider); }
+// Cada setor vê só as próprias caixas. ADM (cadastro/distribuição) vê todas. Correções: só líderes.
+const BOX_SETOR = k => k.startsWith('laudo') || k === 'revisao-asbuilt' ? 'laudo' : k.startsWith('correcao') ? 'correcao' : k;
+function boxAllowed(b) {
+  const m = me();
+  if (b.leader) return !!m.lider;
+  return m.setor === 'adm' || BOX_SETOR(b.k) === m.setor;
+}
+function visibleBoxes() { return BOXES.filter(boxAllowed); }
+const inMySetor = d => me().setor === 'adm' || d.setor === me().setor || (d.setor === 'correcao' && me().lider);
 
 /* ================== shell ================== */
 function renderTop(client) {
@@ -836,7 +844,8 @@ function rowHTML(d) {
     <td>${av(d.assignee, 'sm')}</td>
   </tr>`;
 }
-function sortItems(l) { return l.slice().sort((a, b) => (overdue(b) - overdue(a)) || (!!b.priority - !!a.priority) || b.updatedAt - a.updatedAt); }
+// Sempre pela última alteração: cadastro novo, atribuição ou qualquer mudança sobe para o topo.
+function sortItems(l) { return l.slice().sort((a, b) => b.updatedAt - a.updatedAt); }
 function renderList() {
   const v = UI.view; let items = sortItems(viewItems(v));
   const lim = 60 + UI.more;
@@ -971,7 +980,7 @@ function renderDash() {
   const L = S.dem.filter(live), m = me();
   const k = [
     ['RMs ativos', S.rms.filter(r => !r.cancelado && demsOf(r).some(d => d.status !== 'concluida' && d.setor !== 'bens')).length, '', { name: 'all' }],
-    ['Na caixa de entrada', L.filter(d => d.status === 'entrada').length, '', { name: 'box', box: 'in', key: 'laudo-asbuilt' }],
+    ['Na caixa de entrada', visibleBoxes().reduce((n, b) => n + boxItems('in', b.k).length, 0), '', { name: 'box', box: 'in', key: (visibleBoxes()[0] || { k: 'laudo-asbuilt' }).k }],
     ['Material atrasado', L.filter(overdue).length, 'bad', { name: 'pend' }],
     ['As Built pendente', L.filter(d => d.setor === 'asbuilt' && d.status !== 'concluida').length, 'warn', { name: 'box', box: 'in', key: 'asbuilt' }],
     ['Concluídas em 30 dias', L.filter(d => d.status === 'concluida' && d.updatedAt > Date.now() - 30 * D && d.setor !== 'bens').length, '', { name: 'box', box: 'out', key: 'laudo-asbuilt' }],
