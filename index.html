@@ -415,6 +415,19 @@ select.btn{padding-right:28px}
 .bar.wide{grid-template-columns:170px 1fr minmax(28px,auto)}
 .bar .c{white-space:nowrap}
 @media (max-width:860px){.bar.wide{grid-template-columns:110px 1fr minmax(24px,auto)}}
+.mcols{gap:3px}
+.mcols .colb .cb{max-width:18px}
+.colb.today .cl{color:var(--accent-strong);font-weight:700}
+.colb.today .cl::after{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--accent);margin:2px auto 0}
+.ct{display:flex;flex-direction:column;gap:5px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ct:last-child{border-bottom:0}
+.ctlist .ct{padding:12px 16px}
+.ctm{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sel{user-select:all}
+.cto{font-size:13px;background:var(--surface-2);border-radius:6px;padding:7px 9px;overflow-wrap:anywhere}
+.ct .chip{align-self:flex-start;cursor:pointer}
+.filters input[type=search]{flex:0 1 auto}
 body{margin:0}</style></head><body>
 <div id="app"></div><div id="modal-root"></div>
 <script>
@@ -460,11 +473,12 @@ const SETOR = {
   bens: { nome: 'ADM Bens e Imóveis', ic: 'bld' },
   correcao: { nome: 'Correções', ic: 'edit' },
   gestao: { nome: 'Gestão', ic: 'chart' },
+  dados: { nome: 'Análise de dados', ic: 'chart' },
   cliente: { nome: 'Cliente', ic: 'user' },
 };
 const USERS = [
   { id: 'gabriel', nome: 'Gabriel', setor: 'adm', lider: true },
-  { id: 'pedro', nome: 'Pedro', setor: 'adm' },
+  { id: 'pedro', nome: 'Pedro', setor: 'dados' },
   { id: 'leticia', nome: 'Letícia Araujo', setor: 'laudo', lider: true },
   { id: 'raquel', nome: 'Raquel', setor: 'laudo' },
   { id: 'mariana', nome: 'Mariana (ex.)', setor: 'laudo', inativo: true },
@@ -565,7 +579,7 @@ function dotsFor(d) {
 /* persistência */
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
 function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { S = s; S.pend = S.pend || []; S.ocorr = S.ocorr || []; S.prefs = S.prefs || {}; return; } } } catch (e) { }
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { S = s; S.pend = S.pend || []; S.rms.forEach(r => { r.contatos = r.contatos || []; }); S.ocorr = S.ocorr || []; S.prefs = S.prefs || {}; return; } } } catch (e) { }
   seed();
 }
 
@@ -597,7 +611,7 @@ function findRM(no) { const n = String(no || '').replace(/\D/g, ''); return n ? 
 function createRM(o) {
   const t = Date.now(); const [lat, lng] = o.lat != null ? [o.lat, o.lng] : geo(o.cidade, o.uf);
   const vist = Math.max(1, +o.vistoria || 1);
-  const rm = { id: 'rm' + uid(), rm: String(o.rm).replace(/\D/g, ''), bairro: o.bairro, cidade: o.cidade, uf: o.uf, lat, lng, eng: o.eng, classif: o.classif || 'Regular', regiao: o.regiao || '', desenho: o.desenho || 'asbuilt', dataVistoria: o.dataVistoria || t, confirmado: o.confirmado !== false, notas: o.notas || '', anexos: o.anexos || [], createdBy: S.me, createdAt: t, updatedAt: t, cancelado: false, legacyTarget: vist > 1 ? vist : 0, cycles: [{ n: 1, status: 'aberta', eng: o.eng, desenho: o.desenho || 'asbuilt', dur: +o.dur || null, dv: o.dataVistoria || t }], feed: [] };
+  const rm = { id: 'rm' + uid(), rm: String(o.rm).replace(/\D/g, ''), bairro: o.bairro, cidade: o.cidade, uf: o.uf, lat, lng, eng: o.eng, classif: o.classif || 'Regular', regiao: o.regiao || '', desenho: o.desenho || 'asbuilt', dataVistoria: o.dataVistoria || t, confirmado: o.confirmado !== false, notas: o.notas || '', anexos: o.anexos || [], createdBy: S.me, createdAt: t, updatedAt: t, cancelado: false, legacyTarget: vist > 1 ? vist : 0, cycles: [{ n: 1, status: 'aberta', eng: o.eng, desenho: o.desenho || 'asbuilt', dur: +o.dur || null, dv: o.dataVistoria || t }], feed: [], contatos: [] };
   S.rms.push(rm);
   addFeed(rm, 'cadastro', `RM cadastrado como ${vist}ª vistoria${vist > 1 ? ' (histórico anterior ao sistema: a esteira inicia na 1ª vistoria e quem assumir regulariza as vistorias anteriores)' : ''}.${rm.notas ? '\nAtenção: ' + rm.notas : ''}`, { anexos: rm.anexos, tgt: 'laudo' });
   if (!o.semLaudo) {
@@ -737,6 +751,14 @@ function seed() {
     const rm = lrms[i % lrms.length], at = Math.min(now - 2 * D, rm.createdAt + rnd() * 2 * D), hrs = (rm.eng === 'paulo' ? 20 : rm.eng === 'felipe' ? 10 : 5) + rnd() * (rm.eng === 'paulo' ? 70 : 30);
     S.pend.push({ id: uid(), rmId: rm.id, eng: rm.eng, by: pick(['leticia', 'raquel']), at, motivo: pick(PM), prazo: 24, resolvedAt: at + hrs * H });
   }
+
+  // vistorias agendadas para o restante do mês (agenda dos engenheiros)
+  const today0 = new Date(now); today0.setHours(0, 0, 0, 0);
+  const mEnd = new Date(today0.getFullYear(), today0.getMonth() + 1, 0).getDate();
+  S.pool.slice(0, 24).forEach((p, i) => { const day = Math.min(mEnd, today0.getDate() + 1 + Math.floor(rnd() * (mEnd - today0.getDate()))); const dt = new Date(today0.getFullYear(), today0.getMonth(), day); const eng = p.uf === 'PR' || p.uf === 'SP' ? 'kaue' : p.uf === 'BA' ? 'felipe' : 'paulo'; S.agenda.push({ id: uid(), eng, date: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`, poolId: p.id }); });
+  // contatos para agendamento
+  S.rms.forEach(r => { r.contatos = []; });
+  [['rm396', 'Marcos Pereira', 'Morador', '(42) 99812-4410', 'Manhã', 'Só atende depois das 9h. Portão azul.'], ['rm396', 'Imobiliária Planalto', 'Imobiliária', '(42) 3524-1180', 'Comercial', 'Falar com a Juliana para pegar a chave.'], ['rm10754', 'Ana Lúcia Sousa', 'Proprietária', '(85) 98877-2301', 'Tarde', 'Prefere WhatsApp. Fissuras na laje: pediu prioridade.'], ['rm8726', 'José Carlos', 'Morador', '(75) 99140-7765', 'Qualquer horário', ''], ['rm9902', 'Francisca Lima', 'Proprietária', '(88) 99631-0042', 'Tarde', 'Morador anterior não autorizou a entrada. Ela vai acompanhar a nova visita.'], ['rm11208', 'Condomínio Bueno Park (síndico)', 'Síndico', '(62) 3241-8890', 'Comercial', 'Agendar com 48 h de antecedência.']].forEach(([rmId, nome, rel, tel, hor, obs]) => { const r = S.rms.find(x => x.id === rmId); if (r) r.contatos.push({ id: uid(), nome, rel, tel, email: '', hor, obs, by: 'gabriel', at: now - Math.floor(rnd() * 5 + 1) * D }); });
   // ocorrências registradas pelo ADM
   const OC = [['paulo', 'Atraso na entrega de material', 'Média', 'Enviou as fotos 3 dias depois do prazo combinado.', 'rm10919', 12], ['paulo', 'Não compareceu à vistoria', 'Grave', 'Morador aguardou e o engenheiro não apareceu. Remarcado.', null, 20], ['felipe', 'Material incompleto', 'Leve', 'Faltou a foto do relógio de água.', 'rm8615', 2], ['paulo', 'Erro na folha de vistoria', 'Média', 'Endereço anotado errado na folha.', 'rm4410', 25], ['kaue', 'Atraso na entrega de material', 'Leve', 'Atraso de 1 dia por chuva.', 'rm342', 6], ['felipe', 'Erro na folha de vistoria', 'Leve', 'Classificação marcada como Leve, era Regular.', 'rm5521', 9], ['paulo', 'Material incompleto', 'Média', 'Sem medidas da edícula.', null, 33], ['kaue', 'Conduta', 'Leve', 'Cliente relatou que o engenheiro chegou fora do horário.', null, 40]];
   OC.forEach(([eng, tipo, grav, desc, rmId, dAgo]) => S.ocorr.push({ id: uid(), eng, tipo, grav, desc, rmId, at: now - dAgo * D, by: 'gabriel' }));
@@ -885,6 +907,7 @@ function tree(box) {
 function renderNav() {
   const m = me();
   if (m.setor === 'gestao') return renderNavGestao();
+  if (m.setor === 'dados') return renderNavDados();
   const late = S.dem.filter(d => live(d) && overdue(d)).length;
   return `<aside class="nav">
     ${m.setor === 'adm' ? `<button class="cta" data-a="go" data-v='{"name":"cad"}'>${ic('plus')}Cadastrar RM</button>` : `<button class="cta" data-a="sol">${ic('plus')}Nova solicitação</button>`}
@@ -896,7 +919,7 @@ function renderNav() {
     <h4><span>Equipe</span></h4>
     ${navBtn('Painel da equipe', { name: 'mural' }, null, 'msg')}
     ${m.lider ? navBtn('Dashboard da equipe', { name: 'analise' }, null, 'chart') : ''}
-    ${m.setor === 'adm' ? `<h4><span>Engenheiros externos</span></h4>${navBtn('Resultados dos engenheiros', { name: 'engs' }, null, 'chart')}${navBtn('Registro de ocorrências', { name: 'ocorr' }, S.ocorr.length, 'flag')}` : ''}
+    ${m.setor === 'adm' ? `<h4><span>ADM</span></h4>${navBtn('Painel de vistorias', { name: 'vist' }, null, 'cal')}${navBtn('Vistorias por RM', { name: 'vrm' }, null, 'list')}${navBtn('Contatos para agendamento', { name: 'contatos' }, S.rms.reduce((n, r) => n + (r.contatos || []).length, 0), 'user')}<h4><span>Engenheiros externos</span></h4>${navBtn('Resultados dos engenheiros', { name: 'engs' }, null, 'chart')}${navBtn('Registro de ocorrências', { name: 'ocorr' }, S.ocorr.length, 'flag')}` : ''}
     ${m.lider || m.setor === 'adm' ? navBtn('Extração para Excel', { name: 'extrair' }, null, 'table') : ''}
     <h4><span>Caixa de entrada</span></h4>${tree('in')}
     <h4><span>Caixa de saída</span></h4>${tree('out')}
@@ -1047,6 +1070,7 @@ function renderRM() {
       <dt>Informações importantes</dt><dd>${rm.notas ? esc(rm.notas) : '<span class="muted">—</span>'}</dd>
       <dt>Anexos</dt><dd><div class="files">${rm.anexos.length ? rm.anexos.map(a => `<span class="chip">${ic('clip', 'sm')}${esc(a.nome)}</span>`).join('') : '<span class="muted">Nenhum</span>'}</div></dd>
     </dl></section>
+    ${['adm', 'dados'].includes(m.setor) ? contatosPanel(rm) : ''}
   </div>
   <div class="col"><section class="panel"><h3>${ic('msg')}Histórico do RM</h3>
     <div class="composer"><textarea id="fc" placeholder="Registre qualquer acontecimento deste RM (fica no histórico com seu nome)"></textarea>
@@ -1293,7 +1317,7 @@ function renderMural() {
 /* ================== render principal ================== */
 function renderInternal() {
   const v = UI.view.name;
-  const main = v === 'dash' ? (me().setor === 'gestao' ? renderGestao() : renderDash()) : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : v === 'gestao' ? renderGestao() : v === 'engs' ? renderEngs() : v === 'ocorr' ? renderOcorr() : v === 'extrair' ? renderExtrair() : renderList();
+  const main = v === 'dash' ? (me().setor === 'gestao' ? renderGestao() : me().setor === 'dados' ? renderVist() : renderDash()) : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : v === 'gestao' ? renderGestao() : v === 'vist' ? renderVist() : v === 'vrm' ? renderVRM() : v === 'contatos' ? renderContatos() : v === 'engs' ? renderEngs() : v === 'ocorr' ? renderOcorr() : v === 'extrair' ? renderExtrair() : renderList();
   return `<div class="app ${UI.navOpen ? 'navopen' : ''} ${UI.present ? 'present' : ''}">${UI.present ? `<button class="btn exitp" data-a="present">${ic('x', 'sm')}Sair da apresentação</button>` : ''}${renderTop(false)}${renderNav()}<main class="main" id="main">${main}</main></div>`;
 }
 /* ================== modal / toast ================== */
@@ -1657,13 +1681,15 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.id === 'who') { S.me = t.value; UI.hist = []; UI.view = me().setor === 'cliente' ? { name: 'rms' } : me().setor === 'gestao' ? { name: 'gestao' } : { name: 'dash' }; UI.present = false; UI.pick = false; UI.q = ''; UI.notif = false; UI.more = 0; UI.ctab = 'rms'; commit(); toast(`Você está como ${me().nome}.`); }
+  if (t.id === 'who') { S.me = t.value; UI.hist = []; UI.view = me().setor === 'cliente' ? { name: 'rms' } : me().setor === 'gestao' ? { name: 'gestao' } : me().setor === 'dados' ? { name: 'vist' } : { name: 'dash' }; UI.present = false; UI.pick = false; UI.q = ''; UI.notif = false; UI.more = 0; UI.ctab = 'rms'; commit(); toast(`Você está como ${me().nome}.`); }
   else if (t.id === 'showBens') { UI.showBens = t.checked; render(); }
   else if (t.id === 'fuf' || t.id === 'fset' || t.id === 'fsit') { UI.f = { uf: $('#fuf').value, setor: $('#fset').value, sit: $('#fsit').value }; render(); }
   else if (t.id === 'reng') UI.rEng = t.value;
   else if (t.id === 'rdate') UI.rDate = t.value;
   else if (t.id === 'evmes') UI.evMes = t.value;
   else if (t.id === 'per') { UI.per = t.value; render(); }
+  else if (t.id === 'vmes') { UI.vmes = t.value; render(); }
+  else if (t.name === 'oref') { const rmF = $('#o-rmlab'); if (rmF) rmF.innerHTML = t.value === 'rm' ? 'RM <span class="req">*</span>' : 'RM (opcional)'; }
   else if (t.id === 'oceng' || t.id === 'octipo') { UI.oc = { eng: $('#oceng').value, tipo: $('#octipo').value }; render(); }
   else if (t.id === 'teamsel') { UI.team = t.value; UI.person = ''; render(); }
   else if (t.closest && t.closest('#cadform')) cadUpdate();
@@ -1748,9 +1774,9 @@ const TW = {
     const l = S.dem.filter(d => ts.includes(d.setor) && d.status === 'concluida').sort((a, b) => doneAt(b) - doneAt(a)).slice(0, 10);
     return `<div class="att">${l.map(d => { const rm = rmOf(d); return `<button data-a="open" data-rm="${rm.id}" data-d="${d.id}">${av(d.assignee, 'sm')}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(U(d.assignee).nome)} · ${esc(tipoLabel(d))}</span><span class="note">RM ${esc(rm.rm)} · ${esc(rm.cidade)}/${rm.uf} · ${fdt(doneAt(d))}</span></span><span class="mono note">${dur(doneAt(d) - d.createdAt)}</span></button>`; }).join('') || '<div class="empty">Nada finalizado ainda.</div>'}</div>`; } },
 };
-const DEF = { analise: ['resumo', 'tabela', 'dia', 'etapa', 'gordura', 'recent'], gestao: ['resumo', 'equipes', 'pessoa', 'gordura', 'tempo', 'pendeng'], engs: ['e-cards', 'e-pend', 'e-reg', 'e-vist', 'e-tipos', 'e-tempo', 'e-ocorr'] };
+const DEF = { vist: ['v-resumo', 'v-real-dia', 'v-real-eng', 'v-prev-dia', 'v-prev-eng', 'v-tipo', 'v-desenho', 'v-tipodes'], vistadm: ['v-resumo', 'v-real-dia', 'v-real-eng', 'v-prev-dia', 'v-prev-eng'], analise: ['resumo', 'tabela', 'dia', 'etapa', 'gordura', 'recent'], gestao: ['resumo', 'equipes', 'pessoa', 'gordura', 'tempo', 'pendeng'], engs: ['e-cards', 'e-pend', 'e-reg', 'e-vist', 'e-tipos', 'e-tempo', 'e-ocorr'] };
 const prefKey = p => `${S.me}:${p}`;
-const prefsOf = (p, reg) => (S.prefs[prefKey(p)] || DEF[p]).filter(k => reg[k]);
+const prefsOf = (p, reg) => (S.prefs[prefKey(p)] || (p === 'vist' && me().setor === 'adm' ? DEF.vistadm : DEF[p])).filter(k => reg[k]);
 
 /* ---- widgets dos engenheiros ---- */
 function engData(e) {
@@ -1761,6 +1787,7 @@ function engData(e) {
   return { e, cyc, P, open: P.filter(p => !p.resolvedAt), reg: res.length ? res.reduce((s, p) => s + (p.resolvedAt - p.at), 0) / res.length : null, tdur: durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : null, oc: S.ocorr.filter(o => o.eng === e.id && o.at >= s0) };
 }
 const engList = () => ENGS.filter(e => !UI.eng || e.id === UI.eng);
+const OCT_RM = ['Acesso negado pelo morador', 'Endereço incorreto', 'Imóvel desocupado / sem acesso', 'Documentação pendente', 'Contato não atende', 'Outro (RM)'];
 const OCT = ['Atraso na entrega de material', 'Material incompleto', 'Erro na folha de vistoria', 'Não compareceu à vistoria', 'Conduta', 'Outro'];
 const EW = {
   'e-cards': { t: 'Resumo por engenheiro', l: true, r() {
@@ -1784,7 +1811,7 @@ function dashShell(page, reg, title, eyebrow, extra, body) {
   const sel = prefsOf(page, reg);
   const picker = UI.pick ? `<section class="panel picker"><h3>${ic('edit')}Escolha o que aparece neste painel</h3><div class="wpick">${Object.entries(reg).filter(([, w]) => !w.multi || extra.multi).map(([k, w]) => `<label><input type="checkbox" data-a="wtog" data-p="${page}" data-k="${k}" ${sel.includes(k) ? 'checked' : ''}> ${w.t}</label>`).join('')}</div><div class="acts" style="margin-top:10px"><button class="btn sm" data-a="wall" data-p="${page}">Marcar todos</button><button class="btn sm ghost" data-a="wdef" data-p="${page}">Voltar ao padrão</button></div><p class="note" style="margin:8px 0 0">A escolha fica salva para o seu usuário.</p></section>` : '';
   return `<div class="page"><div class="phead"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1></div><span class="sp"></span>
-    ${UI.present ? `<span class="chip">${PERS.find(p => p[0] === (UI.per || 'all'))[1]} · ${fdt(Date.now())}</span>` : `<select id="per" class="btn">${PERS.map(([k, l]) => `<option value="${k}" ${(UI.per || 'all') === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    ${UI.present ? `<span class="chip">${extra.noPer ? '' : PERS.find(p => p[0] === (UI.per || 'all'))[1] + ' · '}dados até ${fdt(Date.now())}</span>` : `${extra.ctl || ''}${extra.noPer ? '' : `<select id="per" class="btn">${PERS.map(([k, l]) => `<option value="${k}" ${(UI.per || 'all') === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
     <button class="btn ${UI.pick ? 'pri' : ''}" data-a="pick">${ic('edit', 'sm')}Personalizar painel</button><button class="btn" data-a="present">${ic('board', 'sm')}Modo apresentação</button>`}</div>
     ${extra.tabs || ''}${UI.present ? '' : picker}<div class="wgrid">${sel.filter(k => !reg[k].multi || extra.multi).map(k => `<section class="panel w ${reg[k].l ? 'wl' : ''}"><h3>${reg[k].t}</h3>${reg[k].r(body)}</section>`).join('') || '<div class="card empty">Nenhuma informação escolhida. Use "Personalizar painel".</div>'}</div></div>`;
 }
@@ -1821,18 +1848,19 @@ function renderOcorr() {
   const m = me(), can = m.setor === 'adm';
   if (!['adm', 'gestao'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM e Gestão.</div></div>`;
   const f = UI.oc || {}, l = S.ocorr.filter(o => (!f.eng || o.eng === f.eng) && (!f.tipo || o.tipo === f.tipo)).sort((a, b) => b.at - a.at);
-  return `<div class="page"><div class="phead"><div><span class="eyebrow">Engenheiros externos</span><h1>Registro de ocorrências</h1></div></div>
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">Engenheiros externos</span><h1>Registro de ocorrências</h1><p class="sub" style="margin:4px 0 0">Ocorrências com o engenheiro ou com o RM (morador, endereço, documentação).</p></div></div>
   ${can ? `<form id="ocform" class="panel" style="margin-bottom:16px" autocomplete="off"><h3>${ic('flag')}Nova ocorrência</h3><div class="form">
-    <div class="f"><label for="o-eng">Engenheiro <span class="req">*</span></label><select id="o-eng" name="eng">${ENGS.map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('')}</select></div>
-    <div class="f"><label for="o-tipo">Tipo <span class="req">*</span></label><select id="o-tipo" name="tipo">${OCT.map(t => `<option>${t}</option>`).join('')}</select></div>
+    <div class="f c4"><label>Referente a</label><div class="radios"><label><input type="radio" name="oref" value="eng" checked> Engenheiro</label><label><input type="radio" name="oref" value="rm"> RM</label></div></div>
+    <div class="f"><label for="o-eng">Engenheiro</label><select id="o-eng" name="eng"><option value="">Não se aplica</option>${ENGS.map((e, i) => `<option value="${e.id}" ${i ? '' : 'selected'}>${esc(e.nome)}</option>`).join('')}</select></div>
+    <div class="f"><label for="o-tipo">Tipo <span class="req">*</span></label><select id="o-tipo" name="tipo"><optgroup label="Engenheiro">${OCT.map(t => `<option>${t}</option>`).join('')}</optgroup><optgroup label="RM">${OCT_RM.map(t => `<option>${t}</option>`).join('')}</optgroup></select></div>
     <div class="f"><label for="o-grav">Gravidade</label><select id="o-grav" name="grav"><option>Leve</option><option selected>Média</option><option>Grave</option></select></div>
     <div class="f"><label for="o-data">Data <span class="req">*</span></label><input id="o-data" name="data" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-    <div class="f"><label for="o-rm">RM (opcional)</label><input id="o-rm" name="rm" inputmode="numeric" list="ocrms" placeholder="ex.: 10919"><datalist id="ocrms">${S.rms.filter(r => r.origem !== 'bens').map(r => `<option value="${r.rm}">`).join('')}</datalist></div>
+    <div class="f"><label for="o-rm" id="o-rmlab">RM (opcional)</label><input id="o-rm" name="rm" inputmode="numeric" list="ocrms" placeholder="ex.: 10919"><datalist id="ocrms">${S.rms.filter(r => r.origem !== 'bens').map(r => `<option value="${r.rm}">`).join('')}</datalist></div>
     <div class="f c4"><label for="o-desc">Descrição <span class="req">*</span></label><textarea id="o-desc" name="desc" placeholder="O que aconteceu"></textarea></div></div>
     <div class="acts" style="margin-top:12px;justify-content:flex-end"><button type="submit" class="btn pri">${ic('check', 'sm')}Registrar ocorrência</button></div></form>` : ''}
-  <div class="filters"><select id="oceng"><option value="">Todos os engenheiros</option>${ENGS.map(e => `<option value="${e.id}" ${f.eng === e.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select><select id="octipo"><option value="">Todos os tipos</option>${OCT.map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="note">${l.length} ocorrência(s)</span></div>
-  <div class="tablewrap"><table class="list"><thead><tr><th>Data</th><th>Engenheiro</th><th>Tipo</th><th>Gravidade</th><th>RM</th><th>Descrição</th><th>Registrada por</th></tr></thead><tbody>
-  ${l.map(o => { const rm = o.rmId && S.rms.find(r => r.id === o.rmId); return `<tr ${rm ? `data-a="open" data-rm="${rm.id}"` : ''}><td class="dt">${fd(o.at)}</td><td>${esc(ENG(o.eng).nome)}</td><td>${esc(o.tipo)}</td><td>${pill([o.grav === 'Grave' ? 'bad' : o.grav === 'Média' ? 'warn' : '', o.grav])}</td><td class="mono">${rm ? esc(rm.rm) : '—'}</td><td style="max-width:420px">${esc(o.desc)}</td><td>${av(o.by, 'sm')}</td></tr>`; }).join('') || '<tr><td colspan="7" class="empty">Nenhuma ocorrência.</td></tr>'}
+  <div class="filters"><select id="oceng"><option value="">Todos os engenheiros</option>${ENGS.map(e => `<option value="${e.id}" ${f.eng === e.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select><select id="octipo"><option value="">Todos os tipos</option>${[...OCT, ...OCT_RM].map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="note">${l.length} ocorrência(s)</span></div>
+  <div class="tablewrap"><table class="list"><thead><tr><th>Data</th><th>Referente a</th><th>Engenheiro</th><th>Tipo</th><th>Gravidade</th><th>RM</th><th>Descrição</th><th>Registrada por</th></tr></thead><tbody>
+  ${l.map(o => { const rm = o.rmId && S.rms.find(r => r.id === o.rmId); return `<tr ${rm ? `data-a="open" data-rm="${rm.id}"` : ''}><td class="dt">${fd(o.at)}</td><td>${o.ref === 'rm' ? 'RM' : 'Engenheiro'}</td><td>${o.eng ? esc(ENG(o.eng).nome) : '—'}</td><td>${esc(o.tipo)}</td><td>${pill([o.grav === 'Grave' ? 'bad' : o.grav === 'Média' ? 'warn' : '', o.grav])}</td><td class="mono">${rm ? esc(rm.rm) : '—'}</td><td style="max-width:420px">${esc(o.desc)}</td><td>${av(o.by, 'sm')}</td></tr>`; }).join('') || '<tr><td colspan="8" class="empty">Nenhuma ocorrência.</td></tr>'}
   </tbody></table></div></div>`;
 }
 function submitOcorr(form) {
@@ -1840,10 +1868,12 @@ function submitOcorr(form) {
   if (!v.desc.trim()) return toast('Descreva a ocorrência.');
   if (!v.data) return toast('Informe a data.');
   let rm = null; if (v.rm.trim()) { rm = findRM(v.rm); if (!rm) return toast(`RM ${v.rm} não encontrado.`); }
-  const o = { id: uid(), eng: v.eng, tipo: v.tipo, grav: v.grav, desc: v.desc.trim(), rmId: rm ? rm.id : null, at: new Date(v.data + 'T12:00').getTime(), by: S.me };
+  if (v.oref === 'rm' && !rm) return toast('Informe o RM da ocorrência.');
+  if (v.oref === 'eng' && !v.eng) return toast('Escolha o engenheiro.');
+  const o = { id: uid(), ref: v.oref, eng: v.eng, tipo: v.tipo, grav: v.grav, desc: v.desc.trim(), rmId: rm ? rm.id : null, at: new Date(v.data + 'T12:00').getTime(), by: S.me };
   S.ocorr.push(o);
-  if (rm) addFeed(rm, 'ocorrencia', `Ocorrência com o engenheiro ${ENG(v.eng).nome} (${v.tipo}, ${v.grav}): ${o.desc}`);
-  USERS.filter(u => u.setor === 'gestao').forEach(u => notify(u.id, `Nova ocorrência: ${ENG(v.eng).nome} · ${v.tipo}`, rm ? rm.id : null));
+  if (rm) addFeed(rm, 'ocorrencia', `Ocorrência ${v.eng ? 'com o engenheiro ' + ENG(v.eng).nome : 'no RM'} (${v.tipo}, ${v.grav}): ${o.desc}`);
+  USERS.filter(u => u.setor === 'gestao').forEach(u => notify(u.id, `Nova ocorrência: ${v.eng ? ENG(v.eng).nome : 'RM ' + rm.rm} · ${v.tipo}`, rm ? rm.id : null));
   commit(); toast('Ocorrência registrada.');
 }
 FK.ocorrencia = 'Ocorrência';
@@ -1969,6 +1999,121 @@ Object.assign(A, {
   xall(ds) { document.querySelectorAll('#xform input[name="col"]').forEach(i => { i.checked = ds.on === '1'; }); },
   xgen() { genXlsx(); },
 });
+
+/* ================== vistorias do mês (Pedro / Gabriel) ================== */
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const curMes = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+function vistMonth(mes) {
+  const [y, mo] = mes.split('-').map(Number), a = new Date(y, mo - 1, 1).getTime(), b = new Date(y, mo, 1).getTime(), now = Date.now(), out = [];
+  S.rms.forEach(rm => { if (rm.origem === 'bens' || rm.cancelado) return; rm.cycles.forEach(c => { const t = c.dv || rm.createdAt; if (t >= a && t < b) out.push({ t, eng: c.eng || rm.eng, n: c.n, des: (c.desenho || rm.desenho) === 'croqui' ? 'croqui' : 'asbuilt', rm, done: t <= now }); }); });
+  S.agenda.forEach(g => { const p = S.pool.find(p => p.id === g.poolId); if (!p || p.cadastrado) return; const t = new Date(g.date + 'T12:00').getTime(); if (t >= a && t < b) out.push({ t, eng: g.eng, n: p.vistoria, des: p.vistoria > 1 ? 'croqui' : 'asbuilt', pool: p, done: false }); });
+  return { y, mo, days: new Date(y, mo, 0).getDate(), items: out };
+}
+function dayCols(V, done) {
+  const now = new Date(), isCur = V.y === now.getFullYear() && V.mo === now.getMonth() + 1;
+  const counts = [...Array(V.days)].map((_, i) => V.items.filter(x => x.done === done && new Date(x.t).getDate() === i + 1).length), mx = Math.max(1, ...counts);
+  return `<div class="cols mcols">${counts.map((n, i) => `<div class="colb ${isCur && i + 1 === now.getDate() ? 'today' : ''}" title="${pad(i + 1)}/${pad(V.mo)}: ${n} vistoria(s) ${done ? 'realizada(s)' : 'a realizar'}"><span class="cv mono">${n || ''}</span><span class="cb" style="height:${n / mx * 100}%;${done ? '' : 'background:var(--e1)'}"></span><span class="cl mono">${i + 1}</span></div>`).join('')}</div>`;
+}
+const nLab = n => n >= 4 ? '4ª ou mais' : `${n}ª Vistoria`;
+const DES = { asbuilt: 'As Built', croqui: 'Croqui' };
+function vtable(rows, V) {
+  return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:420px"><thead><tr><th></th><th>Realizadas</th><th>A realizar</th><th>Total no mês</th></tr></thead><tbody>${rows.map(([l, f]) => { const it = V.items.filter(f); return `<tr><td>${l}</td><td class="mono">${it.filter(x => x.done).length}</td><td class="mono">${it.filter(x => !x.done).length}</td><td class="mono"><b>${it.length}</b></td></tr>`; }).join('')}</tbody></table></div>`;
+}
+const VW = {
+  'v-resumo': { t: 'Resumo do mês', l: true, r(V) { const r = V.items.filter(x => x.done).length, p = V.items.length - r; const late = V.items.filter(x => !x.done && x.t < new Date().setHours(0, 0, 0, 0)).length;
+    return `<div class="kpis k6" style="margin:0;grid-template-columns:repeat(4,minmax(0,1fr))">${tile('Vistorias no mês', V.items.length)}${tile('Realizadas', r, '', V.items.length ? Math.round(r / V.items.length * 100) + '% do mês' : '')}${tile('A realizar', p, '', late ? `${late} com data já passada` : '')}${tile('Média por dia útil', (r / Math.max(1, workDays(V, true))).toFixed(1).replace('.', ','), '', 'realizadas até hoje')}</div>`; } },
+  'v-real-dia': { t: 'Vistorias realizadas por dia', l: true, r(V) { return dayCols(V, true); } },
+  'v-real-eng': { t: 'Realizadas por engenheiro', r(V) { const it = V.items.filter(x => x.done); return hbars(ENGS.map(e => ({ l: e.nome, v: it.filter(x => x.eng === e.id).length, c: e.cor, dot: e.cor }))); } },
+  'v-prev-dia': { t: 'Vistorias a realizar por dia', l: true, r(V) { return dayCols(V, false) + '<p class="note" style="margin:8px 0 0">Inclui RMs já cadastrados com data futura e imóveis na agenda dos engenheiros.</p>'; } },
+  'v-prev-eng': { t: 'A realizar por engenheiro', r(V) { const it = V.items.filter(x => !x.done); return hbars(ENGS.map(e => ({ l: e.nome, v: it.filter(x => x.eng === e.id).length, c: e.cor, dot: e.cor }))); } },
+  'v-tipo': { t: 'Por tipo de vistoria', r(V) { return vtable([1, 2, 3, 4].map(n => [nLab(n), x => (n === 4 ? x.n >= 4 : x.n === n)]), V); } },
+  'v-desenho': { t: 'Por tipo de desenho', r(V) { return vtable([['As Built', x => x.des === 'asbuilt'], ['Croqui', x => x.des === 'croqui']], V); } },
+  'v-tipodes': { t: 'Tipo de vistoria + desenho', l: true, r(V) {
+    const cell = (n, d) => { const it = V.items.filter(x => (n === 4 ? x.n >= 4 : x.n === n) && x.des === d); return `<td class="mono"><b>${it.length}</b> <span class="muted">(${it.filter(x => x.done).length} realizadas)</span></td>`; };
+    return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:520px"><thead><tr><th>Vistoria</th><th>As Built</th><th>Croqui</th><th>Total</th></tr></thead><tbody>${[1, 2, 3, 4].map(n => `<tr><td>${nLab(n)}</td>${cell(n, 'asbuilt')}${cell(n, 'croqui')}<td class="mono"><b>${V.items.filter(x => n === 4 ? x.n >= 4 : x.n === n).length}</b></td></tr>`).join('')}</tbody></table></div>`; } },
+};
+function workDays(V, untilToday) { const now = new Date(); let n = 0; for (let d = 1; d <= V.days; d++) { const dt = new Date(V.y, V.mo - 1, d); if (untilToday && dt > now) break; if (dt.getDay() % 6) n++; } return n; }
+function renderVist() {
+  const m = me(); if (!['dados', 'adm'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM e Análise de dados.</div></div>`;
+  const mes = UI.vmes || curMes(), V = vistMonth(mes);
+  const ctl = `<input type="month" id="vmes" class="btn" value="${mes}">`;
+  return dashShell('vist', VW, `Vistorias de ${MESES[V.mo - 1]} de ${V.y}`, `${m.setor === 'dados' ? 'Painel de análise' : 'Painel ADM'} · dados até ${fdt(Date.now())}`, { noPer: true, ctl }, V);
+}
+
+/* ================== vistorias por RM ================== */
+function renderVRM() {
+  const m = me(); if (!['dados', 'adm'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM e Análise de dados.</div></div>`;
+  const q = norm(UI.vq || ''), now = Date.now();
+  const rows = S.rms.filter(r => r.origem !== 'bens').map(rm => { const cs = rm.cycles.map(c => ({ c, t: c.dv || rm.createdAt })); return { rm, cs, done: cs.filter(x => x.t <= now), next: cs.filter(x => x.t > now).sort((a, b) => a.t - b.t)[0] }; })
+    .filter(x => !q || norm([x.rm.rm, x.rm.bairro, x.rm.cidade, x.rm.uf, ENG(x.rm.eng).nome].join(' ')).includes(q))
+    .sort((a, b) => b.done.length - a.done.length || Math.max(...b.cs.map(x => x.t)) - Math.max(...a.cs.map(x => x.t)));
+  const dist = [1, 2, 3, 4].map(n => rows.filter(x => (n === 4 ? x.done.length >= 4 : x.done.length === n)).length);
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">ADM · dados até ${fdt(now)}</span><h1>Vistorias por RM</h1></div></div>
+  <div class="kpis" style="grid-template-columns:repeat(4,minmax(0,1fr))">${dist.map((n, i) => tile(`RMs com ${i === 3 ? '4 ou mais vistorias' : (i + 1) + (i ? ' vistorias' : ' vistoria')}`, n)).join('')}</div>
+  <div class="filters"><input id="vq" type="search" placeholder="Filtrar por RM, bairro, cidade, UF ou engenheiro" value="${esc(UI.vq || '')}" style="min-width:min(360px,100%)"><span class="note">${rows.length} RM(s)</span></div>
+  <div class="tablewrap"><table class="list"><thead><tr><th>RM</th><th>Endereço</th><th>Realizadas</th><th>Vistorias</th><th>Próxima</th><th>Contatos</th></tr></thead><tbody>
+  ${rows.slice(0, 150).map(x => `<tr data-a="open" data-rm="${x.rm.id}" class="${x.rm.cancelado ? 'rowcancel' : ''}"><td class="num">${esc(x.rm.rm)}</td><td>${esc(x.rm.bairro)} · ${esc(x.rm.cidade)}/${x.rm.uf}${x.rm.cancelado ? ' <span class="pill bad">Cancelado</span>' : ''}</td><td class="mono"><b>${x.done.length}</b></td>
+    <td><div style="display:flex;gap:4px;flex-wrap:wrap">${x.cs.map(({ c, t }) => `<span class="chip" title="${esc(ENG(c.eng || x.rm.eng).nome)}">${c.n}ª · ${DES[(c.desenho || x.rm.desenho) === 'croqui' ? 'croqui' : 'asbuilt']} · ${fd(t)}${t > now ? ' · agendada' : ''}</span>`).join('')}</div></td>
+    <td class="dt">${x.next ? fd(x.next.t) : '—'}</td><td class="mono">${(x.rm.contatos || []).length || '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum RM encontrado.</td></tr>'}
+  </tbody></table></div></div>`;
+}
+
+/* ================== contatos para agendamento ================== */
+const REL = ['Morador', 'Proprietário(a)', 'Síndico', 'Imobiliária', 'Zelador / portaria', 'Outro'];
+function contatoRow(rm, c, showRM) {
+  return `<div class="ct">${showRM ? `<button class="chip" data-a="open" data-rm="${rm.id}">RM ${esc(rm.rm)} · ${esc(rm.cidade)}/${rm.uf}</button>` : ''}<div class="ctm"><b>${esc(c.nome)}</b> <span class="pill">${esc(c.rel)}</span>${c.hor ? ` <span class="note">melhor horário: ${esc(c.hor)}</span>` : ''}</div>
+    <div class="ctl"><span class="mono sel">${esc(c.tel)}</span><button class="btn sm ghost" data-a="copy" data-t="${esc(c.tel)}">Copiar</button>${c.email ? `<span class="mono sel">${esc(c.email)}</span>` : ''}</div>
+    ${c.obs ? `<div class="cto"><span class="eyebrow">OBS</span> ${esc(c.obs)}</div>` : ''}<div class="note">Cadastrado por ${esc(U(c.by).nome)} em ${fd(c.at)} <button class="btn sm ghost" data-a="ctedit" data-rm="${rm.id}" data-id="${c.id}">Editar</button><button class="btn sm ghost" data-a="ctdel" data-rm="${rm.id}" data-id="${c.id}">Remover</button></div></div>`;
+}
+function contatosPanel(rm) {
+  return `<section class="panel"><h3>${ic('user')}Contatos para agendamento <span class="sp" style="flex:1"></span><button class="btn sm pri" data-a="ctnew" data-rm="${rm.id}">${ic('plus', 'sm')}Adicionar</button></h3>${(rm.contatos || []).map(c => contatoRow(rm, c)).join('') || '<p class="note" style="margin:0">Nenhum contato cadastrado para este RM.</p>'}</section>`;
+}
+function renderContatos() {
+  const m = me(); if (!['dados', 'adm'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM.</div></div>`;
+  const q = norm(UI.cq || '');
+  const list = []; S.rms.forEach(rm => (rm.contatos || []).forEach(c => list.push([rm, c])));
+  const f = list.filter(([rm, c]) => !q || norm([rm.rm, rm.bairro, rm.cidade, c.nome, c.tel, c.obs, c.rel].join(' ')).includes(q)).sort((a, b) => b[1].at - a[1].at);
+  return `<div class="page" style="max-width:1100px"><div class="phead"><div><span class="eyebrow">ADM</span><h1>Contatos para agendamento</h1></div><span class="sp"></span><button class="btn pri" data-a="ctnew">${ic('plus', 'sm')}Novo contato</button></div>
+  <div class="filters"><input id="cq" type="search" placeholder="Buscar por RM, nome, telefone ou OBS" value="${esc(UI.cq || '')}" style="min-width:min(360px,100%)"><span class="note">${f.length} contato(s)</span></div>
+  <div class="card ctlist">${f.map(([rm, c]) => contatoRow(rm, c, true)).join('') || '<div class="empty">Nenhum contato encontrado.</div>'}</div></div>`;
+}
+function contatoModal(rmId, cid) {
+  const rm0 = rmId && S.rms.find(r => r.id === rmId), c = cid && rm0 ? rm0.contatos.find(x => x.id === cid) : null;
+  modal({
+    title: c ? 'Editar contato' : 'Novo contato para agendamento', intro: rm0 ? `RM ${esc(rm0.rm)} · ${esc(rm0.bairro)} · ${esc(rm0.cidade)}/${rm0.uf}` : 'Informe o RM do imóvel.',
+    body: (rm0 ? '' : fIn('rm', 'Nº do RM', true, 'inputmode="numeric" list="ctrms" placeholder="ex.: 396"', 'c4') + `<datalist id="ctrms">${S.rms.filter(r => r.origem !== 'bens').map(r => `<option value="${r.rm}">${esc(r.bairro + ' · ' + r.cidade)}</option>`).join('')}</datalist>`)
+      + fIn('nome', 'Nome', true, `value="${esc(c?.nome || '')}"`) + fSel('rel', 'Relação com o imóvel', REL.map(r => [r, r]), c?.rel || 'Morador')
+      + fIn('tel', 'Telefone / WhatsApp', true, `inputmode="tel" placeholder="(00) 00000-0000" value="${esc(c?.tel || '')}"`) + fIn('email', 'E-mail', false, `type="email" value="${esc(c?.email || '')}"`)
+      + fIn('hor', 'Melhor horário', false, `placeholder="ex.: manhã, depois das 14h" value="${esc(c?.hor || '')}"`, 'c4') + fTA('obs', 'OBS', false, 'ex.: portão azul, pegar a chave na imobiliária', c?.obs || ''),
+    ok: c ? 'Salvar' : 'Cadastrar contato',
+    onOk(v) {
+      const rm = rm0 || findRM(v.rm); if (!rm) return 'RM não encontrado. Confira o número.';
+      if (!v.nome.trim()) return 'Informe o nome.'; if (!v.tel.trim()) return 'Informe o telefone.';
+      const data = { nome: v.nome.trim(), rel: v.rel, tel: v.tel.trim(), email: v.email.trim(), hor: v.hor.trim(), obs: v.obs.trim() };
+      rm.contatos = rm.contatos || [];
+      if (c) Object.assign(c, data); else rm.contatos.push(Object.assign({ id: uid(), by: S.me, at: Date.now() }, data));
+      addFeed(rm, 'comentario', `${c ? 'Contato atualizado' : 'Contato para agendamento cadastrado'}: ${data.nome} (${data.rel}).${data.obs ? ' OBS: ' + data.obs : ''}`);
+      toast(c ? 'Contato atualizado.' : 'Contato cadastrado.');
+    }
+  });
+}
+function renderNavDados() {
+  return `<aside class="nav">
+    ${navBtn('Painel de análise', { name: 'vist' }, null, 'chart')}
+    ${navBtn('Vistorias por RM', { name: 'vrm' }, null, 'list')}
+    ${navBtn('Extração para Excel', { name: 'extrair' }, null, 'table')}
+    <h4><span>Consulta</span></h4>
+    ${navBtn('Todas as requisições', { name: 'all' }, viewItems({ name: 'all' }).length, 'list')}
+    <div class="navfoot"><span>Protótipo com dados de exemplo. As alterações ficam salvas neste navegador.</span><button data-a="reset">${ic('redo', 'sm')} Restaurar dados de exemplo</button></div>
+  </aside>`;
+}
+Object.assign(A, {
+  ctnew(ds) { contatoModal(ds.rm); },
+  ctedit(ds) { contatoModal(ds.rm, ds.id); },
+  ctdel(ds) { const rm = S.rms.find(r => r.id === ds.rm), c = rm.contatos.find(x => x.id === ds.id); modal({ title: 'Remover contato', intro: `Remover ${esc(c.nome)} dos contatos do RM ${esc(rm.rm)}?`, body: '', ok: 'Remover', danger: true, onOk() { rm.contatos = rm.contatos.filter(x => x.id !== ds.id); addFeed(rm, 'comentario', `Contato removido: ${c.nome}.`); toast('Contato removido.'); } }); },
+  copy(ds) { const t = ds.t; try { navigator.clipboard.writeText(t).then(() => toast('Copiado.'), () => toast(t)); } catch (e) { toast(t); } },
+});
+document.addEventListener('input', e => { const t = e.target; if (t.id === 'vq') { UI.vq = t.value; render(); } else if (t.id === 'cq') { UI.cq = t.value; render(); } });
 
 load();
 render();
