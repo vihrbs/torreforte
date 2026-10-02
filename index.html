@@ -17,6 +17,7 @@
   --f-display:"Archivo","Segoe UI",system-ui,sans-serif;
   --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --e1:#2a78d6; --e2:#eb6834; --e3:#1baf7a;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
@@ -28,6 +29,7 @@
   --ok:#6cc895; --ok-bg:#16301f; --warn:#e3b54a; --warn-bg:#33290f; --bad:#f07b77; --bad-bg:#3a1a1a; --info:#7fb2ea; --info-bg:#162a40;
   --s-laudo:#7fb2ea; --s-asbuilt:#b294ea; --s-evtl:#5cc9c0; --s-bens:#a5c45b; --s-correcao:#f07b77; --s-adm:#e8a15a;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  --e1:#3987e5; --e2:#d95926; --e3:#199e70;
   color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#0e141b; --surface:#161f29; --surface-2:#1b2632; --surface-3:#22303e;
@@ -38,6 +40,7 @@
   --ok:#6cc895; --ok-bg:#16301f; --warn:#e3b54a; --warn-bg:#33290f; --bad:#f07b77; --bad-bg:#3a1a1a; --info:#7fb2ea; --info-bg:#162a40;
   --s-laudo:#7fb2ea; --s-asbuilt:#b294ea; --s-evtl:#5cc9c0; --s-bens:#a5c45b; --s-correcao:#f07b77; --s-adm:#e8a15a;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  --e1:#3987e5; --e2:#d95926; --e3:#199e70;
   color-scheme:dark }
 
 html,body{height:100%}
@@ -389,6 +392,29 @@ table.list{width:100%;border-collapse:collapse;min-width:980px}
 .bar.wide{grid-template-columns:170px 1fr 28px}
 @media (max-width:1180px){.kpis.k6{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:860px){.kpis.k6{grid-template-columns:repeat(2,minmax(0,1fr))}.bar.wide{grid-template-columns:120px 1fr 24px}}
+
+.wgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.wgrid .wl{grid-column:1/-1}
+.picker{margin-bottom:16px;border-color:var(--accent)}
+.wpick{display:flex;flex-wrap:wrap;gap:6px}
+.wpick label{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);border-radius:7px;padding:6px 10px;font-size:13px;cursor:pointer;background:var(--surface)}
+.wpick label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.wpick input{width:auto;height:auto}
+.bar .tr.stack{background:none;gap:2px}
+.ecards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.ecard{border:1px solid var(--line);border-radius:7px;padding:12px 14px;background:var(--surface-2)}
+.ecard .eh{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:8px}
+.ecard dl{display:grid;grid-template-columns:1fr auto;gap:6px 10px;margin:0;font-size:13px}
+.ecard dt{color:var(--ink-2)} .ecard dd{margin:0;font:600 14px var(--f-mono);text-align:right}
+.app.present{grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"main"}
+.app.present .top,.app.present .nav{display:none}
+.app.present .page{max-width:1600px;padding-top:28px}
+.exitp{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;box-shadow:var(--shadow)}
+select.btn{padding-right:28px}
+@media (max-width:1000px){.wgrid{grid-template-columns:1fr}}
+.bar.wide{grid-template-columns:170px 1fr minmax(28px,auto)}
+.bar .c{white-space:nowrap}
+@media (max-width:860px){.bar.wide{grid-template-columns:110px 1fr minmax(24px,auto)}}
 body{margin:0}</style></head><body>
 <div id="app"></div><div id="modal-root"></div>
 <script>
@@ -433,6 +459,7 @@ const SETOR = {
   evtl: { nome: 'EVTL', ic: 'chart' },
   bens: { nome: 'ADM Bens e Imóveis', ic: 'bld' },
   correcao: { nome: 'Correções', ic: 'edit' },
+  gestao: { nome: 'Gestão', ic: 'chart' },
   cliente: { nome: 'Cliente', ic: 'user' },
 };
 const USERS = [
@@ -450,13 +477,14 @@ const USERS = [
   { id: 'leticiab', nome: 'Letícia F', setor: 'bens', lider: true, etapa: 1 },
   { id: 'ricardo', nome: 'Ricardo', setor: 'bens', etapa: 2 },
   { id: 'fernanda', nome: 'Fernanda', setor: 'bens', etapa: 3 },
+  { id: 'naharathy', nome: 'Naharathy Fernandes', setor: 'gestao' },
   { id: 'cliente', nome: 'Cliente', setor: 'cliente' },
 ];
 const U = id => USERS.find(u => u.id === id) || { id, nome: '—', setor: '' };
 const ENGS = [
-  { id: 'kaue', nome: 'Roger Almeida', base: [-25.43, -49.27], cor: 'var(--s-laudo)' },
-  { id: 'felipe', nome: 'Israel Ferreira', base: [-12.97, -38.50], cor: 'var(--s-asbuilt)' },
-  { id: 'paulo', nome: 'Diego Dias', base: [-5.09, -42.80], cor: 'var(--s-evtl)' },
+  { id: 'kaue', nome: 'Roger Almeida', base: [-25.43, -49.27], cor: 'var(--e1)' },
+  { id: 'felipe', nome: 'Israel Ferreira', base: [-12.97, -38.50], cor: 'var(--e2)' },
+  { id: 'paulo', nome: 'Diego Dias', base: [-5.09, -42.80], cor: 'var(--e3)' },
 ];
 const ENG = id => ENGS.find(e => e.id === id) || { nome: id || '—' };
 const TIPO = {
@@ -537,7 +565,7 @@ function dotsFor(d) {
 /* persistência */
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
 function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { S = s; return; } } } catch (e) { }
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { S = s; S.pend = S.pend || []; S.ocorr = S.ocorr || []; S.prefs = S.prefs || {}; return; } } } catch (e) { }
   seed();
 }
 
@@ -569,7 +597,7 @@ function findRM(no) { const n = String(no || '').replace(/\D/g, ''); return n ? 
 function createRM(o) {
   const t = Date.now(); const [lat, lng] = o.lat != null ? [o.lat, o.lng] : geo(o.cidade, o.uf);
   const vist = Math.max(1, +o.vistoria || 1);
-  const rm = { id: 'rm' + uid(), rm: String(o.rm).replace(/\D/g, ''), bairro: o.bairro, cidade: o.cidade, uf: o.uf, lat, lng, eng: o.eng, classif: o.classif || 'Regular', regiao: o.regiao || '', desenho: o.desenho || 'asbuilt', dataVistoria: o.dataVistoria || t, confirmado: o.confirmado !== false, notas: o.notas || '', anexos: o.anexos || [], createdBy: S.me, createdAt: t, updatedAt: t, cancelado: false, legacyTarget: vist > 1 ? vist : 0, cycles: [{ n: 1, status: 'aberta' }], feed: [] };
+  const rm = { id: 'rm' + uid(), rm: String(o.rm).replace(/\D/g, ''), bairro: o.bairro, cidade: o.cidade, uf: o.uf, lat, lng, eng: o.eng, classif: o.classif || 'Regular', regiao: o.regiao || '', desenho: o.desenho || 'asbuilt', dataVistoria: o.dataVistoria || t, confirmado: o.confirmado !== false, notas: o.notas || '', anexos: o.anexos || [], createdBy: S.me, createdAt: t, updatedAt: t, cancelado: false, legacyTarget: vist > 1 ? vist : 0, cycles: [{ n: 1, status: 'aberta', eng: o.eng, desenho: o.desenho || 'asbuilt', dur: +o.dur || null, dv: o.dataVistoria || t }], feed: [] };
   S.rms.push(rm);
   addFeed(rm, 'cadastro', `RM cadastrado como ${vist}ª vistoria${vist > 1 ? ' (histórico anterior ao sistema: a esteira inicia na 1ª vistoria e quem assumir regulariza as vistorias anteriores)' : ''}.${rm.notas ? '\nAtenção: ' + rm.notas : ''}`, { anexos: rm.anexos, tgt: 'laudo' });
   if (!o.semLaudo) {
@@ -584,7 +612,7 @@ function createRM(o) {
 /* ================== dados de exemplo ================== */
 function seed() {
   const now = Date.now();
-  S = { v: 1, seq: 38360, me: 'gabriel', rms: [], dem: [], sols: [], notifs: [], pool: [], agenda: [] };
+  S = { v: 1, seq: 38360, me: 'gabriel', rms: [], dem: [], sols: [], notifs: [], pool: [], agenda: [], pend: [], ocorr: [], prefs: {} };
   let r = 7; const rnd = () => { r = (r * 16807) % 2147483647; return (r - 1) / 2147483646; };
   const pick = a => a[Math.floor(rnd() * a.length)];
   const fe = (rm, at, by, kind, text, ex) => { rm.feed.push(Object.assign({ id: uid(), at, by, kind, text }, ex || {})); rm.updatedAt = Math.max(rm.updatedAt, at); };
@@ -685,7 +713,7 @@ function seed() {
     const x = rnd(); const st = x < .38 ? 0 : x < .62 ? 1 : x < .78 ? 2 : x < .9 ? 3 : 4;
     const b = dm(rm, { setor: 'bens', tipo: 'bens', stage: Math.min(st, 3), assignee: bensU[Math.min(st, 3)], status: st === 4 ? 'concluida' : 'andamento' });
     let tt = at;
-    for (let s = 0; s < st && s < 4; s++) { tt += Math.floor(rnd() * 4 + 1) * D; fe(rm, tt, bensU[s], 'bens', `Etapa concluída: ${FLOW.bens[s]}.`); }
+    for (let s = 0; s < st && s < 4; s++) { tt = Math.min(tt + Math.floor(rnd() * 4 + 1) * D, now - Math.floor(rnd() * 20 + 1) * H); fe(rm, tt, bensU[s], 'bens', `Etapa concluída: ${FLOW.bens[s]}.`); }
     b.updatedAt = tt;
   }
 
@@ -696,6 +724,22 @@ function seed() {
     S.pool.push({ id: uid(), rm: String(11300 + Math.floor(rnd() * 1600)), bairro: pick(BAIRROS), cidade: c[0], uf: c[1], lat: c[2] + (rnd() - .5) * .25, lng: c[3] + (rnd() - .5) * .25, area: Math.round(45 + rnd() * 220), cx: pick(['Baixa', 'Baixa', 'Média', 'Média', 'Alta']), confirmado: rnd() > .3, vistoria: rnd() > .8 ? 2 : 1, cadastrado: false });
   }
 
+
+  // dados dos ciclos (engenheiro, tipo de desenho, duração da vistoria)
+  S.rms.forEach(rm => rm.cycles.forEach(c => { c.eng = c.eng || rm.eng; c.desenho = c.desenho || rm.desenho; c.dur = c.dur || Math.round((1 + rnd() * 3 + (rm.classif === 'Grave' ? 1 : 0)) * 2) / 2; c.dv = c.dv || (c.n === 1 ? rm.createdAt - D : (c.at ? c.at : rm.updatedAt) - D); }));
+  // pendências com engenheiros (material)
+  const PM = ['Faltam fotos da fachada', 'Folha de vistoria incompleta', 'Medidas do terreno ausentes', 'Fotos do quadro elétrico', 'Croqui de campo ilegível', 'Faltam fotos das áreas molhadas', 'Matrícula do imóvel não enviada'];
+  S.pend.push({ id: uid(), rmId: 'rm8615', eng: 'felipe', by: 'leticia', at: now - 30 * H, motivo: 'Faltam fotos da fachada e do quadro elétrico.', prazo: 24 });
+  S.pend.push({ id: uid(), rmId: 'rm10993', eng: 'paulo', by: 'raquel', at: now - 9 * H, motivo: 'Medição do terreno dos fundos.', prazo: 48 });
+  S.dem.forEach(d => { if (d.rmId === 'rm8615' && isMain(d)) d.pendId = S.pend[0].id; if (d.rmId === 'rm10993' && isMain(d)) d.pendId = S.pend[1].id; });
+  const lrms = S.rms.filter(r => r.origem !== 'bens' && !['rm8615', 'rm10993'].includes(r.id));
+  for (let i = 0; i < 28; i++) {
+    const rm = lrms[i % lrms.length], at = Math.min(now - 2 * D, rm.createdAt + rnd() * 2 * D), hrs = (rm.eng === 'paulo' ? 20 : rm.eng === 'felipe' ? 10 : 5) + rnd() * (rm.eng === 'paulo' ? 70 : 30);
+    S.pend.push({ id: uid(), rmId: rm.id, eng: rm.eng, by: pick(['leticia', 'raquel']), at, motivo: pick(PM), prazo: 24, resolvedAt: at + hrs * H });
+  }
+  // ocorrências registradas pelo ADM
+  const OC = [['paulo', 'Atraso na entrega de material', 'Média', 'Enviou as fotos 3 dias depois do prazo combinado.', 'rm10919', 12], ['paulo', 'Não compareceu à vistoria', 'Grave', 'Morador aguardou e o engenheiro não apareceu. Remarcado.', null, 20], ['felipe', 'Material incompleto', 'Leve', 'Faltou a foto do relógio de água.', 'rm8615', 2], ['paulo', 'Erro na folha de vistoria', 'Média', 'Endereço anotado errado na folha.', 'rm4410', 25], ['kaue', 'Atraso na entrega de material', 'Leve', 'Atraso de 1 dia por chuva.', 'rm342', 6], ['felipe', 'Erro na folha de vistoria', 'Leve', 'Classificação marcada como Leve, era Regular.', 'rm5521', 9], ['paulo', 'Material incompleto', 'Média', 'Sem medidas da edícula.', null, 33], ['kaue', 'Conduta', 'Leve', 'Cliente relatou que o engenheiro chegou fora do horário.', null, 40]];
+  OC.forEach(([eng, tipo, grav, desc, rmId, dAgo]) => S.ocorr.push({ id: uid(), eng, tipo, grav, desc, rmId, at: now - dAgo * D, by: 'gabriel' }));
   S.notifs.push({ id: uid(), to: 'leticia', text: 'Material do RM 8615 está atrasado (prazo de 24 h vencido).', rmId: 'rm8615', at: now - 6 * H, read: false });
   S.notifs.push({ id: uid(), to: 'leticia', text: 'Correção de RM 1180 aguarda OK de Laudos.', rmId: 'rm1180', at: now - 20 * H, read: false });
   S.notifs.push({ id: uid(), to: 'larissa', text: 'Correção de RM 1180 aguarda OK de As Built.', rmId: 'rm1180', at: now - 20 * H, read: false });
@@ -780,7 +824,7 @@ function viewItems(v) {
   const m = me();
   switch (v.name) {
     case 'mine': return S.dem.filter(d => live(d) && d.assignee === m.id && d.status !== 'concluida');
-    case 'team': return S.dem.filter(d => live(d) && d.assignee && d.assignee !== m.id && d.status !== 'concluida' && (m.setor === 'adm' ? d.setor !== 'bens' : U(d.assignee).setor === m.setor) && (!UI.person || d.assignee === UI.person));
+    case 'team': return S.dem.filter(d => live(d) && d.status !== 'concluida' && (m.setor === 'adm' ? d.setor !== 'bens' : d.setor === m.setor) && (!UI.person || (UI.person === '_none' ? !d.assignee : d.assignee === UI.person)));
     case 'pend': return S.dem.filter(d => live(d) && inMySetor(d) && (d.status === 'aguardando' || (d.status === 'entrada' && d.stage === 6)));
     case 'all': return S.dem.filter(d => d.setor !== 'bens' || UI.showBens);
     case 'canc': return S.dem.filter(d => rmOf(d).cancelado && d.status !== 'concluida');
@@ -790,7 +834,7 @@ function viewItems(v) {
 }
 function viewTitle(v) {
   if (v.name === 'mine') return 'Atribuídas a mim';
-  if (v.name === 'team') return 'Atribuídas à equipe';
+  if (v.name === 'team') return me().setor === 'adm' ? 'Geral dos setores' : `Geral do setor · ${SETOR[me().setor].nome}`;
   if (v.name === 'pend') return 'Pendentes';
   if (v.name === 'all') return 'Todas';
   if (v.name === 'canc') return 'Canceladas';
@@ -840,17 +884,20 @@ function tree(box) {
 }
 function renderNav() {
   const m = me();
+  if (m.setor === 'gestao') return renderNavGestao();
   const late = S.dem.filter(d => live(d) && overdue(d)).length;
   return `<aside class="nav">
     ${m.setor === 'adm' ? `<button class="cta" data-a="go" data-v='{"name":"cad"}'>${ic('plus')}Cadastrar RM</button>` : `<button class="cta" data-a="sol">${ic('plus')}Nova solicitação</button>`}
     ${navBtn('Painel', { name: 'dash' }, null, 'home')}
     ${navBtn('Atribuídas a mim', { name: 'mine' }, viewItems({ name: 'mine' }).length, 'user')}
-    ${navBtn('Atribuídas à equipe', { name: 'team' }, (() => { const p = UI.person; UI.person = ''; const n = viewItems({ name: 'team' }).length; UI.person = p; return n; })(), 'list')}
+    ${navBtn(m.setor === 'adm' ? 'Geral dos setores' : `Geral do setor · ${SETOR[m.setor].nome}`, { name: 'team' }, (() => { const p = UI.person; UI.person = ''; const n = viewItems({ name: 'team' }).length; UI.person = p; return n; })(), 'list')}
     ${navBtn('Pendentes', { name: 'pend' }, viewItems({ name: 'pend' }).length, 'alert', '', late > 0)}
     ${navBtn('Todas', { name: 'all' }, viewItems({ name: 'all' }).length, 'list')}
     <h4><span>Equipe</span></h4>
     ${navBtn('Painel da equipe', { name: 'mural' }, null, 'msg')}
-    ${m.lider || m.setor === 'adm' ? navBtn('Análise da equipe', { name: 'analise' }, null, 'chart') : ''}
+    ${m.lider ? navBtn('Dashboard da equipe', { name: 'analise' }, null, 'chart') : ''}
+    ${m.setor === 'adm' ? `<h4><span>Engenheiros externos</span></h4>${navBtn('Resultados dos engenheiros', { name: 'engs' }, null, 'chart')}${navBtn('Registro de ocorrências', { name: 'ocorr' }, S.ocorr.length, 'flag')}` : ''}
+    ${m.lider || m.setor === 'adm' ? navBtn('Extração para Excel', { name: 'extrair' }, null, 'table') : ''}
     <h4><span>Caixa de entrada</span></h4>${tree('in')}
     <h4><span>Caixa de saída</span></h4>${tree('out')}
     <h4><span>Planejamento</span></h4>
@@ -882,7 +929,7 @@ function renderList() {
   const lim = 60 + UI.more;
   const body = !items.length ? `<div class="card empty">Nada aqui no momento.</div>` : UI.mode === 'kanban' ? renderKanban(items) : `<div class="tablewrap"><table class="list"><thead><tr><th>#</th><th>Título</th><th>Fluxo</th><th>Situação</th><th>Vistoria em</th><th>Última alteração</th><th>Criada por</th><th>Responsável</th></tr></thead><tbody>${items.slice(0, lim).map(rowHTML).join('')}</tbody></table></div>${items.length > lim ? `<p style="text-align:center"><button class="btn" data-a="more">Mostrar mais (${items.length - lim})</button></p>` : ''}`;
   return `<div class="page"><div class="phead"><h1>${esc(viewTitle(v))}</h1><span class="sub mono">${items.length}</span><span class="sp"></span>
-    ${v.name === 'team' ? `<div class="ufchips">${[['', 'Todos'], ...teamMembers().filter(u => u.id !== S.me).map(u => [u.id, u.nome])].map(([id, n]) => `<button class="${UI.person === id ? 'on' : ''}" data-a="person" data-p="${id}">${esc(n)}</button>`).join('')}</div>` : ''}
+    ${v.name === 'team' ? `<div class="ufchips">${[['', 'Todos'], ['_none', 'Sem responsável'], ...teamMembers().map(u => [u.id, u.id === S.me ? u.nome + ' (eu)' : u.nome])].map(([id, n]) => `<button class="${UI.person === id ? 'on' : ''}" data-a="person" data-p="${id}">${esc(n)}</button>`).join('')}</div>` : ''}
     ${v.name === 'all' ? `<label class="chip"><input type="checkbox" id="showBens" ${UI.showBens ? 'checked' : ''}> incluir Bens e Imóveis</label>` : ''}
     <div class="seg"><button class="${UI.mode === 'table' ? 'on' : ''}" data-a="mode" data-m="table">${ic('table', 'sm')}Lista</button><button class="${UI.mode === 'kanban' ? 'on' : ''}" data-a="mode" data-m="kanban">${ic('board', 'sm')}Quadro</button></div></div>${body}</div>`;
 }
@@ -1095,6 +1142,7 @@ function renderCad() {
     <div class="f"><label>Desenho</label><div class="radios"><label><input type="radio" name="desenho" value="asbuilt" ${pre.desenho !== 'croqui' ? 'checked' : ''}> As Built</label><label><input type="radio" name="desenho" value="croqui" ${pre.desenho === 'croqui' ? 'checked' : ''}> Croqui</label></div></div>
     <div class="f"><label for="c-cl">Classificação</label><select id="c-cl" name="classif">${['Leve', 'Regular', 'Grave'].map(c => `<option>${c}</option>`).join('')}</select></div>
     <div class="f"><label for="c-reg">Região</label><input id="c-reg" name="regiao" placeholder="ex.: R19"></div>
+    <div class="f"><label for="c-dur">Tempo gasto na vistoria (h)</label><input id="c-dur" name="dur" inputmode="decimal" placeholder="ex.: 2,5"></div>
     <div class="f"><label>Visita</label><div class="radios"><label><input type="radio" name="conf" value="1" checked> Confirmada</label><label><input type="radio" name="conf" value="0"> Aguardando</label></div></div>
     <div class="f c2"><label for="c-as">Atribuir com urgência a</label><select id="c-as" name="assignee"><option value="">Deixar na caixa de entrada</option>${USERS.filter(u => u.setor === 'laudo' && !u.inativo).map(u => `<option value="${u.id}">${esc(u.nome)} (Laudos)</option>`).join('')}</select><span class="hint">Sem atribuição, o RM fica na caixa de entrada para alguém de Laudos assumir.</span></div>
     <div class="f c2"><label>&nbsp;</label><label class="chip" style="height:36px"><input type="checkbox" name="bens"> Incluir também em ADM Bens e Imóveis</label></div>
@@ -1242,41 +1290,11 @@ function renderMural() {
   <section class="panel"><h3>${ic('msg')}Acontecimentos dos últimos 30 dias</h3><div class="ufchips" style="margin-bottom:6px">${MCAT.map(([f, l]) => `<button class="${(UI.mf || '') === f ? 'on' : ''}" data-a="mfilt" data-f="${f}">${l}</button>`).join('')}</div>
   <div class="mural">${rows || '<div class="empty">Nada registrado neste período.</div>'}</div></section></div>`;
 }
-function dur(ms) { const h = ms / H; return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1).replace('.', ',')} d`; }
-function renderAnalise() {
-  const m = me();
-  if (!m.lider && m.setor !== 'adm') return `<div class="page"><div class="empty">Disponível para líderes e ADM.</div></div>`;
-  const T = teamSel(), now = Date.now(), L = S.dem.filter(d => live(d) && d.setor === T);
-  const members = USERS.filter(u => u.setor === T && !u.inativo);
-  const doneEv = teamEvents(T, now - 30 * D).filter(([e]) => DONE_KINDS.includes(e.kind) && U(e.by).setor === T);
-  const rows = members.map(u => {
-    const op = L.filter(d => d.assignee === u.id && d.status !== 'concluida');
-    const c7 = doneEv.filter(([e]) => e.by === u.id && e.at > now - 7 * D).length, c30 = doneEv.filter(([e]) => e.by === u.id).length;
-    const fin = L.filter(d => d.status === 'concluida' && d.assignee === u.id && doneAt(d) > now - 30 * D);
-    const avg = fin.length ? fin.reduce((s, d) => s + (doneAt(d) - assumedAt(d)), 0) / fin.length : null;
-    return { u, open: op.length, and: op.filter(d => d.status === 'andamento').length, wait: op.filter(d => d.status === 'aguardando').length, late: op.filter(overdue).length, c7, c30, avg };
-  });
-  const days = [...Array(14)].map((_, i) => { const t0 = new Date(now - (13 - i) * D); t0.setHours(0, 0, 0, 0); const t1 = t0.getTime() + D; return [t0, doneEv.filter(([e]) => e.at >= t0.getTime() && e.at < t1).length]; });
-  const mx = Math.max(1, ...days.map(d => d[1]));
-  const st = {}; L.filter(d => d.status !== 'concluida').forEach(d => { const s = stageName(d); st[s] = (st[s] || 0) + 1; });
-  const smx = Math.max(1, ...Object.values(st));
-  const recent = doneEv.slice(0, 15);
-  return `<div class="page"><div class="phead"><div><span class="eyebrow">Líderes</span><h1>Análise da equipe · ${SETOR[T].nome}</h1></div><span class="sp"></span>${teamPicker()}</div>
-  <section class="panel" style="margin-bottom:16px"><h3>${ic('user')}Por pessoa</h3><div class="tablewrap" style="border:0"><table class="list" style="min-width:720px"><thead><tr><th>Pessoa</th><th>Abertas</th><th>Em andamento</th><th>Aguardando</th><th>Atrasadas</th><th>Concluídas 7 d</th><th>Concluídas 30 d</th><th>Tempo médio</th></tr></thead><tbody>
-  ${rows.map(r => `<tr data-a="teamp" data-p="${r.u.id}"><td><span style="display:flex;gap:8px;align-items:center">${av(r.u.id, 'sm')}${esc(r.u.nome)}${r.u.lider ? ' <span class="pill">líder</span>' : ''}</span></td><td class="mono">${r.open}</td><td class="mono">${r.and}</td><td class="mono">${r.wait}</td><td class="mono" style="${r.late ? 'color:var(--bad);font-weight:600' : ''}">${r.late}</td><td class="mono">${r.c7}</td><td class="mono">${r.c30}</td><td class="mono">${r.avg == null ? '—' : dur(r.avg)}</td></tr>`).join('')}
-  </tbody></table></div><p class="note" style="margin:8px 0 0">Tempo médio: de quando a pessoa assumiu até finalizar, nos últimos 30 dias. Clique numa pessoa para ver o que está com ela.</p></section>
-  <div class="dgrid"><section class="panel"><h3>${ic('chart')}Conclusões por dia · últimas 2 semanas</h3>
-    <div class="cols">${days.map(([t, n]) => `<div class="colb" title="${fd(t)}: ${n}"><span class="cv mono">${n || ''}</span><span class="cb" style="height:${n / mx * 100}%"></span><span class="cl mono">${pad(t.getDate())}</span></div>`).join('')}</div>
-    <h3 style="margin-top:20px">${ic('list')}Abertas por etapa</h3><div class="bars">${Object.entries(st).sort((a, b) => b[1] - a[1]).map(([s, n]) => `<div class="bar wide"><span>${esc(s)}</span><span class="tr"><span style="width:${n / smx * 100}%;background:var(--accent)"></span></span><span class="c">${n}</span></div>`).join('') || '<div class="empty">Nada em aberto.</div>'}</div></section>
-  <section class="panel"><h3>${ic('check')}Finalizações recentes</h3><div class="att">${recent.map(([e, rm]) => `<button data-a="open" data-rm="${rm.id}">${av(e.by, 'sm')}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(U(e.by).nome)} · ${FK[e.kind]}</span><span class="note">RM ${esc(rm.rm)} · ${esc(rm.cidade)}/${rm.uf} · ${fdt(e.at)}</span></span>${e.valor != null ? `<span class="mono note">${brl(e.valor)}</span>` : ''}</button>`).join('') || '<div class="empty">Nenhuma finalização nos últimos 30 dias.</div>'}</div>
-    <p class="note" style="margin:10px 0 0">Você recebe uma notificação no sino sempre que alguém da equipe finaliza uma atribuição.</p></section></div></div>`;
-}
-
 /* ================== render principal ================== */
 function renderInternal() {
   const v = UI.view.name;
-  const main = v === 'dash' ? renderDash() : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : renderList();
-  return `<div class="app ${UI.navOpen ? 'navopen' : ''}">${renderTop(false)}${renderNav()}<main class="main" id="main">${main}</main></div>`;
+  const main = v === 'dash' ? (me().setor === 'gestao' ? renderGestao() : renderDash()) : v === 'rm' ? renderRM() : v === 'search' ? renderSearch() : v === 'cad' ? renderCad() : v === 'rotas' ? renderRotas() : v === 'evtlplan' ? renderEvtl() : v === 'mural' ? renderMural() : v === 'analise' ? renderAnalise() : v === 'gestao' ? renderGestao() : v === 'engs' ? renderEngs() : v === 'ocorr' ? renderOcorr() : v === 'extrair' ? renderExtrair() : renderList();
+  return `<div class="app ${UI.navOpen ? 'navopen' : ''} ${UI.present ? 'present' : ''}">${UI.present ? `<button class="btn exitp" data-a="present">${ic('x', 'sm')}Sair da apresentação</button>` : ''}${renderTop(false)}${renderNav()}<main class="main" id="main">${main}</main></div>`;
 }
 /* ================== modal / toast ================== */
 let M = null;
@@ -1394,7 +1412,7 @@ const A = {
       title: `Regularizar histórico do RM ${rm.rm}`, wide: true, intro: `Este RM chegou na <b>${n}ª vistoria</b>. Registre as vistorias anteriores para o histórico ficar completo desde o início da operação.`, body, ok: `Registrar e seguir para a ${n}ª vistoria`,
       onOk(v) {
         const cs = [];
-        for (let i = 1; i < n; i++) { const valor = parseBRL(v['valor' + i]); if (!(valor > 0)) return `Informe o valor da ${i}ª vistoria.`; if (!v['data' + i]) return `Informe a data de entrega da ${i}ª vistoria.`; const at = new Date(v['data' + i] + 'T12:00').getTime(); if (at > Date.now()) return `A data de entrega da ${i}ª vistoria não pode ser no futuro.`; cs.push({ n: i, status: 'concluida', valor, resp: v['resp' + i], desc: v['desc' + i].trim(), at, legado: true }); }
+        for (let i = 1; i < n; i++) { const valor = parseBRL(v['valor' + i]); if (!(valor > 0)) return `Informe o valor da ${i}ª vistoria.`; if (!v['data' + i]) return `Informe a data de entrega da ${i}ª vistoria.`; const at = new Date(v['data' + i] + 'T12:00').getTime(); if (at > Date.now()) return `A data de entrega da ${i}ª vistoria não pode ser no futuro.`; cs.push({ eng: rm.eng, desenho: rm.desenho, dv: at - 10 * D, n: i, status: 'concluida', valor, resp: v['resp' + i], desc: v['desc' + i].trim(), at, legado: true }); }
         rm.cycles = [...cs, { n, status: 'aberta' }]; rm.legacyTarget = 0; d.cycle = n; touch(d);
         cs.forEach(c => addFeed(rm, 'regularizacao', `${c.n}ª vistoria registrada (anterior ao sistema), entregue em ${fd(c.at)}.${c.desc ? ' ' + c.desc : ''}`, { valor: c.valor, resp: c.resp }));
         S.dem.filter(x => x.rmId === rm.id && x.id !== d.id && x.status !== 'concluida' && x.cycle < n).forEach(x => x.cycle = n);
@@ -1408,10 +1426,10 @@ const A = {
     modal({
       title: 'Aguardando material do engenheiro', intro: `O RM continua na sua esteira. Eng. ${esc(ENG(rm.eng).nome)} tem 24 h para enviar, ou o prazo que ele informar.`,
       body: fTA('motivo', 'O que está faltando', true, 'ex.: fotos da fachada e do quadro elétrico') + fSel('prazo', 'Prazo', [['24', '24 horas (padrão)'], ['48', '48 horas'], ['72', '72 horas'], ['120', '5 dias']], '24'), ok: 'Registrar cobrança',
-      onOk(v) { if (!v.motivo.trim()) return 'Descreva o que está faltando.'; d.status = 'aguardando'; d.waitKind = 'material'; d.waitReason = v.motivo.trim(); d.waitUntil = Date.now() + (+v.prazo) * H; touch(d); addFeed(rm, 'aguardando', `Aguardando material do engenheiro (prazo ${v.prazo} h): ${v.motivo.trim()}`); }
+      onOk(v) { if (!v.motivo.trim()) return 'Descreva o que está faltando.'; d.status = 'aguardando'; d.waitKind = 'material'; d.waitReason = v.motivo.trim(); d.waitUntil = Date.now() + (+v.prazo) * H; touch(d); const pd = { id: uid(), rmId: rm.id, eng: rm.eng, by: S.me, at: Date.now(), motivo: v.motivo.trim(), prazo: +v.prazo }; S.pend.push(pd); d.pendId = pd.id; addFeed(rm, 'aguardando', `Aguardando material do engenheiro (prazo ${v.prazo} h): ${v.motivo.trim()}`); }
     });
   },
-  matok(ds) { const d = dem(ds.id); d.status = 'andamento'; d.waitKind = null; d.waitUntil = null; touch(d); addFeed(rmOf(d), 'material', 'Material do engenheiro recebido.'); commit(); },
+  matok(ds) { const d = dem(ds.id); const pd = S.pend.find(p => p.id === d.pendId) || S.pend.filter(p => p.rmId === d.rmId && !p.resolvedAt).pop(); if (pd) pd.resolvedAt = Date.now(); d.pendId = null; d.status = 'andamento'; d.waitKind = null; d.waitUntil = null; touch(d); addFeed(rmOf(d), 'material', 'Material do engenheiro recebido.'); commit(); },
   croquiok(ds) { const d = dem(ds.id); d.stage = 3; touch(d); addFeed(rmOf(d), 'etapa', 'Croqui desenhado. Etapa: Avaliação imobiliária.'); commit(); },
   toab(ds) {
     const d = dem(ds.id), rm = rmOf(d);
@@ -1524,10 +1542,10 @@ const A = {
     const rm = S.rms.find(r => r.id === ds.rm), last = rm.cycles[rm.cycles.length - 1], n = last.status === 'concluida' ? last.n + 1 : last.n;
     modal({
       title: `Registrar ${n}ª vistoria · RM ${rm.rm}`, intro: 'A nova vistoria entra no mesmo cadastro, mantendo todo o histórico.',
-      body: `<div class="f c4"><label>Desenho</label><div class="radios"><label><input type="radio" name="desenho" value="croqui" checked> Croqui</label><label><input type="radio" name="desenho" value="asbuilt"> As Built</label></div></div>` + fSel('eng', 'Engenheiro externo', ENGS.map(e => [e.id, e.nome]), rm.eng) + fIn('data', 'Data da vistoria', false, `type="date" value="${new Date().toISOString().slice(0, 10)}"`) + fSel('to', 'Atribuir com urgência a', [['', 'Deixar na caixa de entrada'], ...USERS.filter(u => u.setor === 'laudo' && !u.inativo).map(u => [u.id, u.nome])], '', 'c4') + fTA('notas', 'Informações importantes', false) + fFile(),
+      body: `<div class="f c4"><label>Desenho</label><div class="radios"><label><input type="radio" name="desenho" value="croqui" checked> Croqui</label><label><input type="radio" name="desenho" value="asbuilt"> As Built</label></div></div>` + fSel('eng', 'Engenheiro externo', ENGS.map(e => [e.id, e.nome]), rm.eng) + fIn('dur', 'Tempo gasto na vistoria (h)', false, 'inputmode="decimal" placeholder="ex.: 2,5"') + fIn('data', 'Data da vistoria', false, `type="date" value="${new Date().toISOString().slice(0, 10)}"`) + fSel('to', 'Atribuir com urgência a', [['', 'Deixar na caixa de entrada'], ...USERS.filter(u => u.setor === 'laudo' && !u.inativo).map(u => [u.id, u.nome])], '', 'c4') + fTA('notas', 'Informações importantes', false) + fFile(),
       ok: 'Registrar vistoria',
       onOk(v, f) {
-        if (last.status === 'concluida') rm.cycles.push({ n, status: 'aberta' });
+        if (last.status === 'concluida') rm.cycles.push({ n, status: 'aberta' }); Object.assign(rm.cycles.find(c => c.n === n), { eng: v.eng, desenho: v.desenho || 'croqui', dur: parseBRL(v.dur) || null, dv: v.data ? new Date(v.data + 'T12:00').getTime() : Date.now() });
         rm.desenho = v.desenho || 'croqui'; rm.eng = v.eng; if (v.data) rm.dataVistoria = new Date(v.data + 'T12:00').getTime();
         const anexos = filesOf(f.querySelector('#m-files')); rm.anexos.push(...anexos);
         const d = newDem(rm, { tipo: rm.desenho, cycle: n });
@@ -1604,7 +1622,7 @@ function submitCad(form) {
   if (!no) return err('Informe o número do RM.');
   if (!v.bairro.trim() || !v.cidade.trim()) return err('Bairro e cidade são obrigatórios.');
   if (findRM(no)) { cadUpdate(); return err(`RM ${no} já cadastrado. Use o cadastro existente.`); }
-  const rm = createRM({ rm: no, bairro: v.bairro.trim(), cidade: v.cidade.trim(), uf: v.uf, eng: v.eng, vistoria: +v.vistoria, desenho: v.desenho, classif: v.classif, regiao: v.regiao.trim(), confirmado: v.conf === '1', notas: v.notas.trim(), anexos: filesOf($('#c-files')), assignee: v.assignee || null, bens: !!v.bens, dataVistoria: v.dv ? new Date(v.dv + 'T12:00').getTime() : Date.now() });
+  const rm = createRM({ dur: parseBRL(v.dur) || null, rm: no, bairro: v.bairro.trim(), cidade: v.cidade.trim(), uf: v.uf, eng: v.eng, vistoria: +v.vistoria, desenho: v.desenho, classif: v.classif, regiao: v.regiao.trim(), confirmado: v.conf === '1', notas: v.notas.trim(), anexos: filesOf($('#c-files')), assignee: v.assignee || null, bens: !!v.bens, dataVistoria: v.dv ? new Date(v.dv + 'T12:00').getTime() : Date.now() });
   UI.hist = [{ name: 'dash' }]; UI.view = { name: 'rm', id: rm.id };
   commit(); toast(`RM ${no} cadastrado${v.assignee ? ` e atribuído a ${U(v.assignee).nome}` : ' na caixa de entrada'}.`);
 }
@@ -1628,6 +1646,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => {
   e.preventDefault();
   if (e.target.id === 'cadform') return submitCad(e.target);
+  if (e.target.id === 'ocform') return submitOcorr(e.target);
   if (e.target.id === 'mform' && M) {
     const v = Object.fromEntries(new FormData(e.target));
     Object.keys(v).forEach(k => { if (typeof v[k] === 'string') v[k] = v[k]; });
@@ -1638,12 +1657,14 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.id === 'who') { S.me = t.value; UI.hist = []; UI.view = me().setor === 'cliente' ? { name: 'rms' } : { name: 'dash' }; UI.q = ''; UI.notif = false; UI.more = 0; UI.ctab = 'rms'; commit(); toast(`Você está como ${me().nome}.`); }
+  if (t.id === 'who') { S.me = t.value; UI.hist = []; UI.view = me().setor === 'cliente' ? { name: 'rms' } : me().setor === 'gestao' ? { name: 'gestao' } : { name: 'dash' }; UI.present = false; UI.pick = false; UI.q = ''; UI.notif = false; UI.more = 0; UI.ctab = 'rms'; commit(); toast(`Você está como ${me().nome}.`); }
   else if (t.id === 'showBens') { UI.showBens = t.checked; render(); }
   else if (t.id === 'fuf' || t.id === 'fset' || t.id === 'fsit') { UI.f = { uf: $('#fuf').value, setor: $('#fset').value, sit: $('#fsit').value }; render(); }
   else if (t.id === 'reng') UI.rEng = t.value;
   else if (t.id === 'rdate') UI.rDate = t.value;
   else if (t.id === 'evmes') UI.evMes = t.value;
+  else if (t.id === 'per') { UI.per = t.value; render(); }
+  else if (t.id === 'oceng' || t.id === 'octipo') { UI.oc = { eng: $('#oceng').value, tipo: $('#octipo').value }; render(); }
   else if (t.id === 'teamsel') { UI.team = t.value; UI.person = ''; render(); }
   else if (t.closest && t.closest('#cadform')) cadUpdate();
 });
@@ -1657,8 +1678,296 @@ document.addEventListener('input', e => {
   } else if (t.closest && t.closest('#cadform')) cadUpdate();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (M) closeModal(); else if (UI.notif) { UI.notif = false; render(); } }
+  if (e.key === 'Escape') { if (UI.present && !M) { UI.present = false; render(); return; } if (M) closeModal(); else if (UI.notif) { UI.notif = false; render(); } }
   if (e.key === 'Enter' && e.target.id === 'gq' && me().setor !== 'cliente') { UI.view = { name: 'search' }; render(); }
+});
+
+
+/* ================== dashboards (líderes, gestão, engenheiros) ================== */
+const TEAMS = ['laudo', 'asbuilt', 'evtl', 'bens'];
+const PERS = [['all', 'Até agora'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias']];
+const perStart = () => (!UI.per || UI.per === 'all') ? 0 : Date.now() - (+UI.per) * D;
+const perLabel = () => (PERS.find(p => p[0] === (UI.per || 'all')) || PERS[0])[1].toLowerCase();
+function dur(ms) { if (ms == null || isNaN(ms)) return '—'; const h = ms / H; return h < 48 ? `${Math.max(1, Math.round(h))} h` : `${(h / 24).toFixed(1).replace('.', ',')} d`; }
+const hrsTxt = h => h == null || isNaN(h) ? '—' : `${h.toFixed(1).replace('.', ',')} h`;
+const tipoLabel = d => d.setor === 'laudo' ? TIPO[d.tipo] : d.setor === 'asbuilt' ? 'Desenho As Built' : d.setor === 'evtl' ? 'EVTL' : d.setor === 'bens' ? 'Bens e Imóveis' : MOTIVOS['correcao_' + d.tipo];
+
+function metrics(T) {
+  const s0 = perStart();
+  const dem = S.dem.filter(d => d.setor === T && !rmOf(d).cancelado);
+  const open = dem.filter(d => d.status !== 'concluida');
+  const done = dem.filter(d => d.status === 'concluida' && doneAt(d) >= s0);
+  const avg = done.length ? done.reduce((s, d) => s + (doneAt(d) - d.createdAt), 0) / done.length : null;
+  const members = USERS.filter(u => u.setor === T && !u.inativo);
+  const realiz = u => T === 'bens' ? S.rms.reduce((n, rm) => n + rm.feed.filter(e => e.kind === 'bens' && e.by === u.id && e.at >= s0).length, 0) : done.filter(d => d.assignee === u.id).length;
+  const people = members.map(u => {
+    const op = open.filter(d => d.assignee === u.id), fin = done.filter(d => d.assignee === u.id);
+    return { u, real: realiz(u), open: op.length, and: op.filter(d => d.status === 'andamento').length, wait: op.filter(d => d.status === 'aguardando').length, late: op.filter(overdue).length, avg: fin.length ? fin.reduce((s, d) => s + (doneAt(d) - assumedAt(d)), 0) / fin.length : null };
+  });
+  return { T, dem, open, done, avg, people, inbox: open.filter(d => d.status === 'entrada').length, late: open.filter(overdue).length };
+}
+const AGE = [['0–7 dias', 0, 7, '#86b6ef'], ['8–30 dias', 7, 30, '#3987e5'], ['31–60 dias', 30, 60, '#1c5cab'], ['+60 dias', 60, 1e9, '#0d366b']];
+function hbars(items, fmt = v => v) {
+  const mx = Math.max(1, ...items.map(i => i.v || 0));
+  return `<div class="bars">${items.map(i => `<div class="bar wide" title="${esc(i.title || i.l + ': ' + fmt(i.v))}"><span>${i.dot ? `<span class="dot-l" style="color:${i.dot};display:inline-block;margin-right:6px"></span>` : ''}${esc(i.l)}</span><span class="tr"><span style="width:${(i.v || 0) / mx * 100}%;background:${i.c || 'var(--accent)'}"></span></span><span class="c">${fmt(i.v)}</span></div>`).join('') || '<div class="empty">Sem dados.</div>'}</div>`;
+}
+const tile = (l, v, c = '', s = '') => `<div class="kpi ${c}" style="cursor:default"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="note">${s}</div>` : ''}</div>`;
+const tnm = T => SETOR[T].nome;
+
+/* ---- widgets das equipes ---- */
+const TW = {
+  resumo: { t: 'Resumo', l: true, r(ts) {
+    const ms = ts.map(metrics), sum = k => ms.reduce((n, m) => n + m[k].length, 0);
+    const done = ms.flatMap(m => m.done), avg = done.length ? done.reduce((s, d) => s + (doneAt(d) - d.createdAt), 0) / done.length : null;
+    return `<div class="kpis k6" style="margin:0">${tile('Entregas (' + perLabel() + ')', sum('done'))}${tile('Gordura (em aberto)', sum('open'), 'warn')}${tile('Tempo médio por requisição', dur(avg))}${tile('Na caixa sem responsável', ms.reduce((n, m) => n + m.inbox, 0))}${tile('Material atrasado', ms.reduce((n, m) => n + m.late, 0), 'bad')}${tile('Pessoas', ms.reduce((n, m) => n + m.people.length, 0))}</div>`; } },
+  equipes: { t: 'Comparativo por equipe', l: true, multi: true, r(ts) {
+    return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:640px"><thead><tr><th>Equipe</th><th>Entregas</th><th>Gordura</th><th>Tempo médio</th><th>Na caixa</th><th>Atrasadas</th><th>Pessoas</th></tr></thead><tbody>${ts.map(metrics).map(m => `<tr data-a="gtab" data-t="${m.T}"><td>${setorTag(m.T)}</td><td class="mono">${m.done.length}</td><td class="mono">${m.open.length}</td><td class="mono">${dur(m.avg)}</td><td class="mono">${m.inbox}</td><td class="mono">${m.late}</td><td class="mono">${m.people.length}</td></tr>`).join('')}</tbody></table></div>`; } },
+  pessoa: { t: 'Realizado por pessoa', r(ts) {
+    return ts.map(T => { const m = metrics(T); return `${ts.length > 1 ? `<div class="eyebrow" style="margin:10px 0 6px">${tnm(T)}${T === 'bens' ? ' · etapas concluídas' : ''}</div>` : ''}${hbars(m.people.map(p => ({ l: p.u.nome, v: p.real })))}`; }).join(''); } },
+  tabela: { t: 'Detalhe por pessoa', l: true, r(ts) {
+    return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:760px"><thead><tr><th>Pessoa</th>${ts.length > 1 ? '<th>Equipe</th>' : ''}<th>Realizadas</th><th>Abertas</th><th>Em andamento</th><th>Aguardando</th><th>Atrasadas</th><th>Tempo médio</th></tr></thead><tbody>${ts.flatMap(T => metrics(T).people.map(p => `<tr data-a="teamp" data-p="${p.u.id}"><td><span style="display:flex;gap:8px;align-items:center">${av(p.u.id, 'sm')}${esc(p.u.nome)}${p.u.lider ? ' <span class="pill">líder</span>' : ''}</span></td>${ts.length > 1 ? `<td>${setorTag(T)}</td>` : ''}<td class="mono">${p.real}</td><td class="mono">${p.open}</td><td class="mono">${p.and}</td><td class="mono">${p.wait}</td><td class="mono" style="${p.late ? 'color:var(--bad);font-weight:600' : ''}">${p.late}</td><td class="mono">${dur(p.avg)}</td></tr>`)).join('')}</tbody></table></div><p class="note" style="margin:8px 0 0">Tempo médio: de quando a pessoa assumiu até finalizar.</p>`; } },
+  dia: { t: 'Entregas por dia · 14 dias', r(ts) {
+    const now = Date.now(), dem = S.dem.filter(d => ts.includes(d.setor) && d.status === 'concluida');
+    const days = [...Array(14)].map((_, i) => { const t0 = new Date(now - (13 - i) * D); t0.setHours(0, 0, 0, 0); const a = t0.getTime(); return [t0, dem.filter(d => doneAt(d) >= a && doneAt(d) < a + D).length]; });
+    const mx = Math.max(1, ...days.map(d => d[1]));
+    return `<div class="cols">${days.map(([t, n]) => `<div class="colb" title="${fd(t)}: ${n} entrega(s)"><span class="cv mono">${n || ''}</span><span class="cb" style="height:${n / mx * 100}%"></span><span class="cl mono">${pad(t.getDate())}</span></div>`).join('')}</div>`; } },
+  gordura: { t: 'Gordura por tempo em aberto', r(ts) {
+    const now = Date.now();
+    const rows = ts.map(T => { const o = metrics(T).open; return [T, AGE.map(([, a, b]) => o.filter(d => { const g = (now - d.createdAt) / D; return g >= a && g < b; }).length)]; });
+    const mx = Math.max(1, ...rows.map(r => r[1].reduce((a, b) => a + b, 0)));
+    return `<div class="legend">${AGE.map(a => `<span><i style="background:${a[3]}"></i>${a[0]}</span>`).join('')}</div><div class="bars">${rows.map(([T, v]) => { const tot = v.reduce((a, b) => a + b, 0); return `<div class="bar wide"><span>${tnm(T)}</span><span class="tr stack" style="width:${tot / mx * 100}%">${v.map((n, i) => n ? `<span title="${AGE[i][0]}: ${n}" style="flex:${n};background:${AGE[i][3]}"></span>` : '').join('')}</span><span class="c">${tot}</span></div>`; }).join('')}</div>`; } },
+  etapa: { t: 'Em aberto por etapa', r(ts) {
+    return ts.map(T => { const st = {}; metrics(T).open.forEach(d => { const s = stageName(d); st[s] = (st[s] || 0) + 1; }); return `${ts.length > 1 ? `<div class="eyebrow" style="margin:10px 0 6px">${tnm(T)}</div>` : ''}${hbars(Object.entries(st).sort((a, b) => b[1] - a[1]).map(([l, v]) => ({ l, v })))}`; }).join(''); } },
+  tempo: { t: 'Tempo médio por requisição', r(ts) {
+    if (ts.length > 1) return hbars(ts.map(metrics).map(m => ({ l: tnm(m.T), v: m.avg == null ? 0 : m.avg / H, title: `${tnm(m.T)}: ${dur(m.avg)}` })), v => v ? dur(v * H) : '—');
+    return hbars(metrics(ts[0]).people.map(p => ({ l: p.u.nome, v: p.avg == null ? 0 : p.avg / H })), v => v ? dur(v * H) : '—') + '<p class="note" style="margin:8px 0 0">Da hora em que assumiu até finalizar.</p>'; } },
+  pendeng: { t: 'Pendências com engenheiros', r(ts) {
+    const s0 = perStart(), P = S.pend.filter(p => p.at >= s0 && (ts.includes('laudo') || ts.includes(U(p.by).setor))), tot = P.length || 1;
+    return hbars(ENGS.map(e => { const l = P.filter(p => p.eng === e.id); return { l: e.nome, v: l.length, c: e.cor, dot: e.cor, title: `${e.nome}: ${l.length} pendência(s), ${Math.round(l.length / tot * 100)}% · ${l.filter(p => !p.resolvedAt).length} aberta(s)` }; }), v => `${v} · ${Math.round(v / tot * 100)}%`) + `<p class="note" style="margin:8px 0 0">${P.length} pendência(s) ${perLabel()}. Abertas agora: ${S.pend.filter(p => !p.resolvedAt).length}.</p>`; } },
+  recent: { t: 'Finalizações recentes', r(ts) {
+    const l = S.dem.filter(d => ts.includes(d.setor) && d.status === 'concluida').sort((a, b) => doneAt(b) - doneAt(a)).slice(0, 10);
+    return `<div class="att">${l.map(d => { const rm = rmOf(d); return `<button data-a="open" data-rm="${rm.id}" data-d="${d.id}">${av(d.assignee, 'sm')}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(U(d.assignee).nome)} · ${esc(tipoLabel(d))}</span><span class="note">RM ${esc(rm.rm)} · ${esc(rm.cidade)}/${rm.uf} · ${fdt(doneAt(d))}</span></span><span class="mono note">${dur(doneAt(d) - d.createdAt)}</span></button>`; }).join('') || '<div class="empty">Nada finalizado ainda.</div>'}</div>`; } },
+};
+const DEF = { analise: ['resumo', 'tabela', 'dia', 'etapa', 'gordura', 'recent'], gestao: ['resumo', 'equipes', 'pessoa', 'gordura', 'tempo', 'pendeng'], engs: ['e-cards', 'e-pend', 'e-reg', 'e-vist', 'e-tipos', 'e-tempo', 'e-ocorr'] };
+const prefKey = p => `${S.me}:${p}`;
+const prefsOf = (p, reg) => (S.prefs[prefKey(p)] || DEF[p]).filter(k => reg[k]);
+
+/* ---- widgets dos engenheiros ---- */
+function engData(e) {
+  const s0 = perStart();
+  const cyc = []; S.rms.forEach(rm => { if (rm.origem === 'bens' || rm.cancelado) return; rm.cycles.forEach(c => { if ((c.eng || rm.eng) === e.id && (c.dv || rm.createdAt) >= s0) cyc.push([c, rm]); }); });
+  const P = S.pend.filter(p => p.eng === e.id && p.at >= s0), res = P.filter(p => p.resolvedAt);
+  const durs = cyc.map(([c]) => c.dur).filter(Boolean);
+  return { e, cyc, P, open: P.filter(p => !p.resolvedAt), reg: res.length ? res.reduce((s, p) => s + (p.resolvedAt - p.at), 0) / res.length : null, tdur: durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : null, oc: S.ocorr.filter(o => o.eng === e.id && o.at >= s0) };
+}
+const engList = () => ENGS.filter(e => !UI.eng || e.id === UI.eng);
+const OCT = ['Atraso na entrega de material', 'Material incompleto', 'Erro na folha de vistoria', 'Não compareceu à vistoria', 'Conduta', 'Outro'];
+const EW = {
+  'e-cards': { t: 'Resumo por engenheiro', l: true, r() {
+    return `<div class="ecards">${engList().map(engData).map(x => `<div class="ecard"><div class="eh"><span class="dot-l" style="color:${x.e.cor}"></span><b>${esc(x.e.nome)}</b></div><dl><dt>Vistorias realizadas</dt><dd>${x.cyc.length}</dd><dt>Pendências</dt><dd>${x.P.length}${x.open.length ? ` <span class="pill warn">${x.open.length} aberta(s)</span>` : ''}</dd><dt>Tempo médio de regularização</dt><dd>${dur(x.reg)}</dd><dt>Tempo médio por vistoria</dt><dd>${hrsTxt(x.tdur)}</dd><dt>Ocorrências</dt><dd>${x.oc.length}</dd></dl></div>`).join('')}</div>`; } },
+  'e-pend': { t: 'Pendências por engenheiro', r() { const all = engList().map(engData), tot = all.reduce((n, x) => n + x.P.length, 0) || 1; return hbars(all.map(x => ({ l: x.e.nome, v: x.P.length, c: x.e.cor, dot: x.e.cor })), v => `${v} · ${Math.round(v / tot * 100)}%`); } },
+  'e-reg': { t: 'Tempo de regularização das pendências', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.reg == null ? 0 : x.reg / H, c: x.e.cor, dot: x.e.cor })), v => v ? dur(v * H) : '—') + '<p class="note" style="margin:8px 0 0">Média entre a cobrança e o recebimento do material.</p>'; } },
+  'e-vist': { t: 'Vistorias realizadas', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.cyc.length, c: x.e.cor, dot: x.e.cor }))); } },
+  'e-tipos': { t: 'Tipos de vistoria realizados', l: true, r() {
+    const cols = [['1ª vistoria', ([c]) => c.n === 1], ['2ª vistoria', ([c]) => c.n === 2], ['3ª ou mais', ([c]) => c.n >= 3], ['As Built', ([c]) => c.desenho !== 'croqui'], ['Croqui', ([c]) => c.desenho === 'croqui'], ['Classif. Grave', ([, rm]) => rm.classif === 'Grave']];
+    const sol = e => S.dem.filter(d => d.setor === 'laudo' && !isMain(d) && rmOf(d).eng === e.id && d.createdAt >= perStart()).length;
+    return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:640px"><thead><tr><th>Engenheiro</th>${cols.map(c => `<th>${c[0]}</th>`).join('')}<th>Outros tipos de laudo</th></tr></thead><tbody>${engList().map(engData).map(x => `<tr><td><span class="dot-l" style="color:${x.e.cor};display:inline-block;margin-right:6px"></span>${esc(x.e.nome)}</td>${cols.map(c => `<td class="mono">${x.cyc.filter(c[1]).length}</td>`).join('')}<td class="mono">${sol(x.e)}</td></tr>`).join('')}</tbody></table></div>`; } },
+  'e-tempo': { t: 'Tempo médio gasto em cada vistoria', r() { return hbars(engList().map(engData).map(x => ({ l: x.e.nome, v: x.tdur || 0, c: x.e.cor, dot: x.e.cor })), v => v ? hrsTxt(v) : '—') + '<p class="note" style="margin:8px 0 0">Informado no cadastro do RM (tempo gasto na vistoria).</p>'; } },
+  'e-ocorr': { t: 'Ocorrências registradas pelo ADM', l: true, r() {
+    return `<div class="tablewrap" style="border:0"><table class="list" style="min-width:640px"><thead><tr><th>Engenheiro</th>${OCT.map(t => `<th>${t}</th>`).join('')}<th>Total</th></tr></thead><tbody>${engList().map(engData).map(x => `<tr data-a="go" data-v='{"name":"ocorr"}'><td>${esc(x.e.nome)}</td>${OCT.map(t => `<td class="mono">${x.oc.filter(o => o.tipo === t).length || ''}</td>`).join('')}<td class="mono"><b>${x.oc.length}</b></td></tr>`).join('')}</tbody></table></div>`; } },
+  'e-lista': { t: 'Pendências recentes', l: true, r() {
+    const l = S.pend.filter(p => (!UI.eng || p.eng === UI.eng) && p.at >= perStart()).sort((a, b) => b.at - a.at).slice(0, 15);
+    return `<div class="att">${l.map(p => { const rm = S.rms.find(r => r.id === p.rmId); return `<button data-a="open" data-rm="${p.rmId}">${pill(p.resolvedAt ? ['ok', 'Regularizada em ' + dur(p.resolvedAt - p.at)] : (Date.now() - p.at > p.prazo * H ? ['bad', 'Atrasada'] : ['warn', 'Aberta']))}<span style="min-width:0"><span style="display:block;font-weight:500">${esc(ENG(p.eng).nome)} · RM ${esc(rm ? rm.rm : '')}</span><span class="note">${esc(p.motivo)} · ${fdt(p.at)}</span></span>${av(p.by, 'sm')}</button>`; }).join('') || '<div class="empty">Nenhuma pendência.</div>'}</div>`; } },
+};
+
+function dashShell(page, reg, title, eyebrow, extra, body) {
+  const sel = prefsOf(page, reg);
+  const picker = UI.pick ? `<section class="panel picker"><h3>${ic('edit')}Escolha o que aparece neste painel</h3><div class="wpick">${Object.entries(reg).filter(([, w]) => !w.multi || extra.multi).map(([k, w]) => `<label><input type="checkbox" data-a="wtog" data-p="${page}" data-k="${k}" ${sel.includes(k) ? 'checked' : ''}> ${w.t}</label>`).join('')}</div><div class="acts" style="margin-top:10px"><button class="btn sm" data-a="wall" data-p="${page}">Marcar todos</button><button class="btn sm ghost" data-a="wdef" data-p="${page}">Voltar ao padrão</button></div><p class="note" style="margin:8px 0 0">A escolha fica salva para o seu usuário.</p></section>` : '';
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1></div><span class="sp"></span>
+    ${UI.present ? `<span class="chip">${PERS.find(p => p[0] === (UI.per || 'all'))[1]} · ${fdt(Date.now())}</span>` : `<select id="per" class="btn">${PERS.map(([k, l]) => `<option value="${k}" ${(UI.per || 'all') === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <button class="btn ${UI.pick ? 'pri' : ''}" data-a="pick">${ic('edit', 'sm')}Personalizar painel</button><button class="btn" data-a="present">${ic('board', 'sm')}Modo apresentação</button>`}</div>
+    ${extra.tabs || ''}${UI.present ? '' : picker}<div class="wgrid">${sel.filter(k => !reg[k].multi || extra.multi).map(k => `<section class="panel w ${reg[k].l ? 'wl' : ''}"><h3>${reg[k].t}</h3>${reg[k].r(body)}</section>`).join('') || '<div class="card empty">Nenhuma informação escolhida. Use "Personalizar painel".</div>'}</div></div>`;
+}
+function renderAnalise() {
+  const m = me(); if (!m.lider) return `<div class="page"><div class="empty">Disponível apenas para líderes.</div></div>`;
+  return dashShell('analise', TW, `Dashboard da equipe · ${tnm(m.setor)}`, 'Líder', {}, [m.setor]);
+}
+function renderGestao() {
+  if (me().setor !== 'gestao') return `<div class="page"><div class="empty">Disponível apenas para Gestão.</div></div>`;
+  const gt = UI.gt || 'all', ts = gt === 'all' ? TEAMS : [gt];
+  const tabs = `<div class="ctabs">${[['all', 'Visão geral'], ...TEAMS.map(t => [t, tnm(t)])].map(([k, l]) => `<button class="${gt === k ? 'on' : ''}" data-a="gtab" data-t="${k}">${l}</button>`).join('')}</div>`;
+  return dashShell('gestao', TW, gt === 'all' ? 'Painel de gestão' : `Gestão · ${tnm(gt)}`, 'Gestão · informações até ' + fdt(Date.now()), { tabs, multi: ts.length > 1 }, ts);
+}
+function renderEngs() {
+  if (!['gestao', 'adm'].includes(me().setor)) return `<div class="page"><div class="empty">Disponível para Gestão e ADM.</div></div>`;
+  const tabs = `<div class="filters"><div class="ufchips"><button class="${!UI.eng ? 'on' : ''}" data-a="engf" data-e="">Todos</button>${ENGS.map(e => `<button class="${UI.eng === e.id ? 'on' : ''}" data-a="engf" data-e="${e.id}">${esc(e.nome)}</button>`).join('')}</div></div>`;
+  return dashShell('engs', EW, 'Resultados dos engenheiros externos', 'Engenheiros externos', { tabs }, null);
+}
+function renderNavGestao() {
+  return `<aside class="nav">
+    ${navBtn('Painel de gestão', { name: 'gestao' }, null, 'chart')}
+    ${navBtn('Engenheiros externos', { name: 'engs' }, null, 'user')}
+    ${navBtn('Ocorrências dos engenheiros', { name: 'ocorr' }, S.ocorr.length, 'flag')}
+    ${navBtn('Extração para Excel', { name: 'extrair' }, null, 'table')}
+    <h4><span>Consulta</span></h4>
+    ${navBtn('Todas as requisições', { name: 'all' }, viewItems({ name: 'all' }).length, 'list')}
+    ${navBtn('Canceladas', { name: 'canc' }, viewItems({ name: 'canc' }).length, 'ban')}
+    <div class="navfoot"><span>Protótipo com dados de exemplo. As alterações ficam salvas neste navegador.</span><button data-a="reset">${ic('redo', 'sm')} Restaurar dados de exemplo</button></div>
+  </aside>`;
+}
+
+/* ================== ocorrências ================== */
+function renderOcorr() {
+  const m = me(), can = m.setor === 'adm';
+  if (!['adm', 'gestao'].includes(m.setor)) return `<div class="page"><div class="empty">Disponível para ADM e Gestão.</div></div>`;
+  const f = UI.oc || {}, l = S.ocorr.filter(o => (!f.eng || o.eng === f.eng) && (!f.tipo || o.tipo === f.tipo)).sort((a, b) => b.at - a.at);
+  return `<div class="page"><div class="phead"><div><span class="eyebrow">Engenheiros externos</span><h1>Registro de ocorrências</h1></div></div>
+  ${can ? `<form id="ocform" class="panel" style="margin-bottom:16px" autocomplete="off"><h3>${ic('flag')}Nova ocorrência</h3><div class="form">
+    <div class="f"><label for="o-eng">Engenheiro <span class="req">*</span></label><select id="o-eng" name="eng">${ENGS.map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('')}</select></div>
+    <div class="f"><label for="o-tipo">Tipo <span class="req">*</span></label><select id="o-tipo" name="tipo">${OCT.map(t => `<option>${t}</option>`).join('')}</select></div>
+    <div class="f"><label for="o-grav">Gravidade</label><select id="o-grav" name="grav"><option>Leve</option><option selected>Média</option><option>Grave</option></select></div>
+    <div class="f"><label for="o-data">Data <span class="req">*</span></label><input id="o-data" name="data" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
+    <div class="f"><label for="o-rm">RM (opcional)</label><input id="o-rm" name="rm" inputmode="numeric" list="ocrms" placeholder="ex.: 10919"><datalist id="ocrms">${S.rms.filter(r => r.origem !== 'bens').map(r => `<option value="${r.rm}">`).join('')}</datalist></div>
+    <div class="f c4"><label for="o-desc">Descrição <span class="req">*</span></label><textarea id="o-desc" name="desc" placeholder="O que aconteceu"></textarea></div></div>
+    <div class="acts" style="margin-top:12px;justify-content:flex-end"><button type="submit" class="btn pri">${ic('check', 'sm')}Registrar ocorrência</button></div></form>` : ''}
+  <div class="filters"><select id="oceng"><option value="">Todos os engenheiros</option>${ENGS.map(e => `<option value="${e.id}" ${f.eng === e.id ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select><select id="octipo"><option value="">Todos os tipos</option>${OCT.map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="note">${l.length} ocorrência(s)</span></div>
+  <div class="tablewrap"><table class="list"><thead><tr><th>Data</th><th>Engenheiro</th><th>Tipo</th><th>Gravidade</th><th>RM</th><th>Descrição</th><th>Registrada por</th></tr></thead><tbody>
+  ${l.map(o => { const rm = o.rmId && S.rms.find(r => r.id === o.rmId); return `<tr ${rm ? `data-a="open" data-rm="${rm.id}"` : ''}><td class="dt">${fd(o.at)}</td><td>${esc(ENG(o.eng).nome)}</td><td>${esc(o.tipo)}</td><td>${pill([o.grav === 'Grave' ? 'bad' : o.grav === 'Média' ? 'warn' : '', o.grav])}</td><td class="mono">${rm ? esc(rm.rm) : '—'}</td><td style="max-width:420px">${esc(o.desc)}</td><td>${av(o.by, 'sm')}</td></tr>`; }).join('') || '<tr><td colspan="7" class="empty">Nenhuma ocorrência.</td></tr>'}
+  </tbody></table></div></div>`;
+}
+function submitOcorr(form) {
+  const v = Object.fromEntries(new FormData(form));
+  if (!v.desc.trim()) return toast('Descreva a ocorrência.');
+  if (!v.data) return toast('Informe a data.');
+  let rm = null; if (v.rm.trim()) { rm = findRM(v.rm); if (!rm) return toast(`RM ${v.rm} não encontrado.`); }
+  const o = { id: uid(), eng: v.eng, tipo: v.tipo, grav: v.grav, desc: v.desc.trim(), rmId: rm ? rm.id : null, at: new Date(v.data + 'T12:00').getTime(), by: S.me };
+  S.ocorr.push(o);
+  if (rm) addFeed(rm, 'ocorrencia', `Ocorrência com o engenheiro ${ENG(v.eng).nome} (${v.tipo}, ${v.grav}): ${o.desc}`);
+  USERS.filter(u => u.setor === 'gestao').forEach(u => notify(u.id, `Nova ocorrência: ${ENG(v.eng).nome} · ${v.tipo}`, rm ? rm.id : null));
+  commit(); toast('Ocorrência registrada.');
+}
+FK.ocorrencia = 'Ocorrência';
+
+/* ================== extração para Excel ================== */
+const XCOLS = [
+  ['num', 'Nº requisição', d => d.num], ['rm', 'RM', d => rmOf(d).rm], ['vist', 'Vistoria', d => d.cycle + 'ª'], ['setor', 'Setor', d => SETOR[d.setor].nome],
+  ['tipo', 'Tipo', tipoLabel], ['etapa', 'Etapa atual', stageName], ['sit', 'Situação', d => situacao(d)[1]], ['resp', 'Responsável', d => d.assignee ? U(d.assignee).nome : ''],
+  ['criou', 'Criada por', d => U(d.createdBy).nome], ['criada', 'Criada em', d => new Date(d.createdAt)], ['alt', 'Última alteração', d => new Date(d.updatedAt)],
+  ['concl', 'Concluída em', d => d.status === 'concluida' ? new Date(doneAt(d)) : ''], ['horas', 'Tempo até concluir (h)', d => d.status === 'concluida' ? Math.round((doneAt(d) - d.createdAt) / H * 10) / 10 : ''],
+  ['bairro', 'Bairro', d => rmOf(d).bairro], ['cidade', 'Cidade', d => rmOf(d).cidade], ['uf', 'UF', d => rmOf(d).uf], ['eng', 'Engenheiro', d => ENG(rmOf(d).eng).nome],
+  ['classif', 'Classificação', d => rmOf(d).classif], ['regiao', 'Região', d => rmOf(d).regiao], ['desenho', 'Desenho', d => rmOf(d).desenho === 'croqui' ? 'Croqui' : 'As Built'],
+  ['dv', 'Data da vistoria', d => new Date(rmOf(d).dataVistoria)], ['dur', 'Tempo na vistoria (h)', d => (rmOf(d).cycles.find(c => c.n === d.cycle) || {}).dur || ''],
+  ['valor', 'Valor do imóvel', d => { const c = rmOf(d).cycles.find(c => c.n === d.cycle) || {}; return c.valor || c.valorPrev || ''; }],
+  ['resplaudo', 'Responsável pelo laudo', d => { const c = rmOf(d).cycles.find(c => c.n === d.cycle) || {}; return c.resp ? U(c.resp).nome : ''; }],
+  ['pend', 'Pendências com engenheiro', d => S.pend.filter(p => p.rmId === d.rmId).length], ['atraso', 'Material atrasado', d => overdue(d) ? 'Sim' : 'Não'],
+];
+const XSHEETS = [['req', 'Requisições'], ['pessoa', 'Resumo por pessoa'], ['pend', 'Pendências com engenheiros'], ['eng', 'Resultados dos engenheiros'], ['ocorr', 'Ocorrências'], ['hist', 'Histórico de acontecimentos']];
+function renderExtrair() {
+  const m = me(), all = ['gestao', 'adm'].includes(m.setor);
+  if (!all && !m.lider) return `<div class="page"><div class="empty">Disponível para líderes, ADM e Gestão.</div></div>`;
+  const teams = all ? [...TEAMS, 'correcao'] : [m.setor];
+  const sheets = XSHEETS.filter(([k]) => all || !['eng', 'ocorr'].includes(k));
+  const chk = (name, val, label, on = true, dis = false) => `<label><input type="checkbox" name="${name}" value="${val}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}> ${label}</label>`;
+  return `<div class="page" style="max-width:1100px"><div class="phead"><div><span class="eyebrow">${all ? SETOR[m.setor].nome : 'Líder · ' + tnm(m.setor)}</span><h1>Extração para Excel</h1></div></div>
+  <form id="xform" class="col" onsubmit="return false">
+    <section class="panel"><h3>1. O que entra</h3><div class="form">
+      <div class="f c2"><label>Equipes</label><div class="wpick">${teams.map(t => chk('team', t, SETOR[t].nome, true, !all)).join('')}</div></div>
+      <div class="f"><label for="x-per">Período (última alteração)</label><select id="x-per" name="per">${PERS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
+      <div class="f"><label for="x-sit">Situação</label><select id="x-sit" name="sit"><option value="">Todas</option><option value="open">Em aberto</option><option value="done">Concluídas</option><option value="late">Material atrasado</option></select></div>
+    </div></section>
+    <section class="panel"><h3>2. Abas da planilha</h3><div class="wpick">${sheets.map(([k, l]) => chk('sheet', k, l, ['req', 'pessoa'].includes(k) || (all && ['pend', 'eng'].includes(k)))).join('')}</div></section>
+    <section class="panel"><h3>3. Colunas da aba Requisições</h3><div class="acts" style="margin-bottom:10px"><button type="button" class="btn sm" data-a="xall" data-on="1">Marcar todas</button><button type="button" class="btn sm ghost" data-a="xall" data-on="0">Desmarcar todas</button></div>
+      <div class="wpick">${XCOLS.map(([k, l]) => chk('col', k, l, !['criou', 'regiao', 'dur', 'pend'].includes(k))).join('')}</div></section>
+    <div class="acts" style="justify-content:flex-end"><span class="note" id="xinfo">A planilha é gerada com os dados do momento.</span><button type="button" class="btn pri" data-a="xgen">${ic('table', 'sm')}Gerar planilha Excel</button></div>
+  </form></div>`;
+}
+/* gerador .xlsx próprio (sem bibliotecas externas): planilhas com cabeçalho em negrito, filtro, colunas largas e datas reais */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u) { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = n => [n & 255, (n >>> 8) & 255], u32 = n => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
+  files.forEach(([name, txt]) => {
+    const nb = enc.encode(name), data = enc.encode(txt), c = crc32(data);
+    const head = [...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nb.length), ...u16(0)];
+    parts.push(new Uint8Array([...u32(0x04034b50), ...head]), nb, data);
+    cen.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...head, ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nb);
+    off += 30 + nb.length + data.length;
+  });
+  const csize = cen.reduce((s, a) => s + a.length, 0);
+  return new Blob([...parts, ...cen, new Uint8Array([...u32(0x06054b50), 0, 0, 0, 0, ...u16(files.length), ...u16(files.length), ...u32(csize), ...u32(off), 0, 0])], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+const xe = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+function colName(i) { let s = ''; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function sheetXml(rows) {
+  const hd = Object.keys(rows[0]), last = colName(hd.length - 1);
+  const cell = (v, r, c, st) => { const ref = colName(c) + r;
+    if (v instanceof Date) return `<c r="${ref}" s="2"><v>${(v.getTime() - v.getTimezoneOffset() * 60000) / 864e5 + 25569}</v></c>`;
+    if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"${st ? ` s="${st}"` : ''}><v>${v}</v></c>`;
+    if (v === '' || v == null) return '';
+    return `<c r="${ref}" t="inlineStr"${st ? ` s="${st}"` : ''}><is><t xml:space="preserve">${xe(v)}</t></is></c>`; };
+  const widths = hd.map(h => Math.min(50, Math.max(11, h.length + 3, ...rows.slice(0, 300).map(r => r[h] instanceof Date ? 17 : String(r[h] ?? '').length + 2))));
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>`
+    + `<row r="1">${hd.map((h, c) => cell(h, 1, c, 1)).join('')}</row>` + rows.map((r, i) => `<row r="${i + 2}">${hd.map((h, c) => cell(r[h], i + 2, c)).join('')}</row>`).join('')
+    + `</sheetData><autoFilter ref="A1:${last}${rows.length + 1}"/></worksheet>`;
+}
+function buildXlsx(sheets) {
+  const ns = 'http://schemas.openxmlformats.org/', f = [];
+  f.push(['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${ns}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`]);
+  f.push(['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${ns}package/2006/relationships"><Relationship Id="rId1" Type="${ns}officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`]);
+  f.push(['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${ns}spreadsheetml/2006/main" xmlns:r="${ns}officeDocument/2006/relationships"><sheets>${sheets.map(([n], i) => `<sheet name="${xe(n.slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets><definedNames>${sheets.map(([n, rows], i) => `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xe(n.slice(0, 31))}'!$A$1:$${colName(Object.keys(rows[0]).length - 1)}$${rows.length + 1}</definedName>`).join('')}</definedNames></workbook>`]);
+  f.push(['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${ns}package/2006/relationships">${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${ns}officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="${ns}officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`]);
+  f.push(['xl/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${ns}spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy hh:mm"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF162230"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="3"><xf/><xf fontId="1" fillId="2" applyFont="1" applyFill="1"/><xf numFmtId="164" applyNumberFormat="1"/></cellXfs></styleSheet>`]);
+  sheets.forEach(([, rows], i) => f.push([`xl/worksheets/sheet${i + 1}.xml`, sheetXml(rows)]));
+  return zip(f);
+}
+async function saveFile(name, blob) {
+  let dl = null;
+  try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { }
+  if (dl) {
+    try { await dl.save({ filename: name, data: blob }); toast('Planilha pronta.'); }
+    catch (e) { if (e && e.code !== 'declined') toast('Não foi possível salvar a planilha aqui.'); }
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast('Planilha baixada.');
+}
+async function genXlsx() {
+  const f = $('#xform'), get = n => [...f.querySelectorAll(`input[name="${n}"]:checked`)].map(i => i.value);
+  const m = me(), teams = ['gestao', 'adm'].includes(m.setor) ? get('team') : [m.setor], sheets = get('sheet'), cols = XCOLS.filter(c => get('col').includes(c[0]));
+  const per = f.querySelector('#x-per').value, sit = f.querySelector('#x-sit').value, s0 = per === 'all' ? 0 : Date.now() - (+per) * D;
+  if (!teams.length) return toast('Escolha ao menos uma equipe.');
+  if (!sheets.length) return toast('Escolha ao menos uma aba.');
+  if (sheets.includes('req') && !cols.length) return toast('Escolha ao menos uma coluna.');
+  const wb = [];
+  const add = (name, rows) => wb.push([name, rows.length ? rows : [{ Aviso: 'Sem dados para os filtros escolhidos' }]]);
+  const saveP = UI.per; UI.per = per;
+  let nReq = 0;
+  if (sheets.includes('req')) {
+    const ds = S.dem.filter(d => teams.includes(d.setor) && d.updatedAt >= s0 && (!sit || (sit === 'open' ? d.status !== 'concluida' : sit === 'done' ? d.status === 'concluida' : overdue(d)))).sort((a, b) => b.updatedAt - a.updatedAt);
+    nReq = ds.length; add('Requisições', ds.map(d => Object.fromEntries(cols.map(([, l, fn]) => [l, fn(d)]))));
+  }
+  if (sheets.includes('pessoa')) add('Resumo por pessoa', teams.filter(t => t !== 'correcao').flatMap(T => metrics(T).people.map(p => ({ Equipe: tnm(T), Pessoa: p.u.nome, Líder: p.u.lider ? 'Sim' : '', Realizadas: p.real, Abertas: p.open, 'Em andamento': p.and, Aguardando: p.wait, Atrasadas: p.late, 'Tempo médio (h)': p.avg == null ? '' : Math.round(p.avg / H * 10) / 10 }))));
+  if (sheets.includes('pend')) add('Pendências engenheiros', S.pend.filter(p => p.at >= s0).sort((a, b) => b.at - a.at).map(p => { const rm = S.rms.find(r => r.id === p.rmId) || {}; return { Engenheiro: ENG(p.eng).nome, RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, Motivo: p.motivo, 'Cobrado por': U(p.by).nome, 'Cobrado em': new Date(p.at), 'Prazo (h)': p.prazo, 'Regularizado em': p.resolvedAt ? new Date(p.resolvedAt) : '', 'Tempo até regularizar (h)': p.resolvedAt ? Math.round((p.resolvedAt - p.at) / H * 10) / 10 : '', Situação: p.resolvedAt ? 'Regularizada' : (Date.now() - p.at > p.prazo * H ? 'Atrasada' : 'Aberta') }; }));
+  if (sheets.includes('eng')) add('Engenheiros', ENGS.map(engData).map(x => ({ Engenheiro: x.e.nome, 'Vistorias realizadas': x.cyc.length, '1ª vistoria': x.cyc.filter(([c]) => c.n === 1).length, '2ª vistoria': x.cyc.filter(([c]) => c.n === 2).length, '3ª ou mais': x.cyc.filter(([c]) => c.n >= 3).length, 'As Built': x.cyc.filter(([c]) => c.desenho !== 'croqui').length, Croqui: x.cyc.filter(([c]) => c.desenho === 'croqui').length, Pendências: x.P.length, 'Pendências abertas': x.open.length, 'Tempo médio regularização (h)': x.reg == null ? '' : Math.round(x.reg / H * 10) / 10, 'Tempo médio por vistoria (h)': x.tdur == null ? '' : Math.round(x.tdur * 10) / 10, Ocorrências: x.oc.length })));
+  if (sheets.includes('ocorr')) add('Ocorrências', S.ocorr.filter(o => o.at >= s0).sort((a, b) => b.at - a.at).map(o => ({ Data: new Date(o.at), Engenheiro: ENG(o.eng).nome, Tipo: o.tipo, Gravidade: o.grav, RM: o.rmId ? (S.rms.find(r => r.id === o.rmId) || {}).rm : '', Descrição: o.desc, 'Registrada por': U(o.by).nome })));
+  if (sheets.includes('hist')) { const rows = []; S.rms.forEach(rm => rm.feed.forEach(e => { if (e.at >= s0 && teams.some(T => evFor(e, T))) rows.push({ 'Data e hora': new Date(e.at), RM: rm.rm, Cidade: rm.cidade, UF: rm.uf, Pessoa: U(e.by).nome, Setor: SETOR[U(e.by).setor] ? SETOR[U(e.by).setor].nome : '', Tipo: FK[e.kind] || e.kind, Descrição: e.text, 'Valor do imóvel': e.valor || '' }); })); rows.sort((a, b) => b['Data e hora'] - a['Data e hora']); add('Histórico', rows); }
+  UI.per = saveP;
+  const name = `torre-forte-${teams.length === 1 ? teams[0] : 'equipes'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  $('#xinfo').textContent = `${sheets.length} aba(s)${sheets.includes('req') ? ` · ${nReq} requisição(ões)` : ''}`;
+  await saveFile(name, buildXlsx(wb));
+}
+
+/* ações dos painéis */
+Object.assign(A, {
+  pick() { UI.pick = !UI.pick; render(); },
+  present() { UI.present = !UI.present; UI.pick = false; UI.navOpen = false; render(); },
+  gtab(ds) { UI.gt = ds.t; render(); },
+  engf(ds) { UI.eng = ds.e; render(); },
+  wtog(ds) { const reg = ds.p === 'engs' ? EW : TW, cur = prefsOf(ds.p, reg); S.prefs[prefKey(ds.p)] = cur.includes(ds.k) ? cur.filter(k => k !== ds.k) : Object.keys(reg).filter(k => cur.includes(k) || k === ds.k); commit(); },
+  wall(ds) { S.prefs[prefKey(ds.p)] = Object.keys(ds.p === 'engs' ? EW : TW); commit(); },
+  wdef(ds) { delete S.prefs[prefKey(ds.p)]; commit(); },
+  xall(ds) { document.querySelectorAll('#xform input[name="col"]').forEach(i => { i.checked = ds.on === '1'; }); },
+  xgen() { genXlsx(); },
 });
 
 load();
